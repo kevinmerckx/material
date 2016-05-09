@@ -144,7 +144,7 @@ MdChipsCtrl.prototype.inputKeydown = function(event) {
     // Only append the chip and reset the chip buffer if the max chips limit isn't reached.
     if (this.hasMaxChipsReached()) return;
 
-    this.appendChip(chipBuffer);
+    this.appendChip(chipBuffer.trim());
     this.resetChipBuffer();
   }
 };
@@ -213,7 +213,7 @@ MdChipsCtrl.prototype.chipKeydown = function (event) {
  */
 MdChipsCtrl.prototype.getPlaceholder = function() {
   // Allow `secondary-placeholder` to be blank.
-  var useSecondary = (this.items.length &&
+  var useSecondary = (this.items && this.items.length &&
       (this.secondaryPlaceholder == '' || this.secondaryPlaceholder));
   return useSecondary ? this.secondaryPlaceholder : this.placeholder;
 };
@@ -280,10 +280,10 @@ MdChipsCtrl.prototype.appendChip = function(newChip) {
   // Check for a null (but not undefined), or existing chip and cancel appending
   if (newChip == null || this.items.indexOf(newChip) + 1) return;
 
-	// Assign a value to the ngModel bound variable if it is not defined yet
-	if (!this.ngModelCtrl.$viewValue) {
-		this.ngModelCtrl.$setViewValue(this.items);
-	}
+  // Assign a value to the ngModel bound variable if it is not defined yet
+  if (!this.ngModelCtrl.$viewValue) {
+    this.ngModelCtrl.$setViewValue(this.items);
+  }
 
   // Append the new chip onto our list
   var index = this.items.push(newChip);
