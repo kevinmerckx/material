@@ -134,14 +134,14 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
      * @returns {*}
      */
     findFocusTarget: function(containerEl, attributeVal) {
-      var AUTO_FOCUS = '[md-autofocus]';
+      var AUTO_FOCUS = this.prefixer('md-autofocus', true);
       var elToFocus;
 
       elToFocus = scanForFocusable(containerEl, attributeVal || AUTO_FOCUS);
 
       if ( !elToFocus && attributeVal != AUTO_FOCUS) {
         // Scan for deprecated attribute
-        elToFocus = scanForFocusable(containerEl, '[md-auto-focus]');
+        elToFocus = scanForFocusable(containerEl, this.prefixer('md-auto-focus', true));
 
         if ( !elToFocus ) {
           // Scan for fallback to 'universal' API
@@ -173,12 +173,16 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
       }
     },
 
-    // Disables scroll around the passed element.
+    /**
+     * Disables scroll around the passed parent element.
+     * @param element Unused
+     * @param {!Element|!angular.JQLite} parent Element to disable scrolling within.
+     *   Defaults to body if none supplied.
+     */
     disableScrollAround: function(element, parent) {
       $mdUtil.disableScrollAround._count = $mdUtil.disableScrollAround._count || 0;
       ++$mdUtil.disableScrollAround._count;
       if ($mdUtil.disableScrollAround._enableScrolling) return $mdUtil.disableScrollAround._enableScrolling;
-      element = angular.element(element);
       var body = $document[0].body,
         restoreBody = disableBodyScroll(),
         restoreElement = disableElementScroll(parent);
@@ -194,11 +198,10 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
       // Creates a virtual scrolling mask to absorb touchmove, keyboard, scrollbar clicking, and wheel events
       function disableElementScroll(element) {
         element = angular.element(element || body)[0];
-        var zIndex = 50;
         var scrollMask = angular.element(
           '<div class="md-scroll-mask">' +
           '  <div class="md-scroll-mask-bar"></div>' +
-          '</div>').css('z-index', zIndex);
+          '</div>');
         element.appendChild(scrollMask[0]);
 
         scrollMask.on('wheel', preventDefault);
@@ -232,9 +235,7 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
             top: -scrollOffset + 'px'
           });
 
-          applyStyles(htmlNode, {
-            overflowY: 'scroll'
-          });
+          htmlNode.style.overflowY = 'scroll';
         }
 
         if (body.clientWidth < clientWidth) applyStyles(body, {overflow: 'hidden'});
@@ -587,7 +588,7 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
       var queue = nextTick.queue || [];
 
       //-- add callback to the queue
-      queue.push(callback);
+      queue.push({scope: scope, callback: callback});
 
       //-- set default value for digest
       if (digest == null) digest = true;
@@ -606,16 +607,18 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
        * Trigger digest if necessary
        */
       function processQueue() {
-        var skip = scope && scope.$$destroyed;
-        var queue = !skip ? nextTick.queue : [];
-        var digest = !skip ? nextTick.digest : null;
+        var queue = nextTick.queue;
+        var digest = nextTick.digest;
 
         nextTick.queue = [];
         nextTick.timeout = null;
         nextTick.digest = false;
 
-        queue.forEach(function(callback) {
-          callback();
+        queue.forEach(function(queueItem) {
+          var skip = queueItem.scope && queueItem.scope.$$destroyed;
+          if (!skip) {
+            queueItem.callback();
+          }
         });
 
         if (digest) $rootScope.$digest();
@@ -676,6 +679,7 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
 
     hasComputedStyle: hasComputedStyle
   };
+
 
 // Instantiate other namespace utility methods
 

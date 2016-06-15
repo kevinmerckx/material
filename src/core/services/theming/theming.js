@@ -1,3 +1,9 @@
+/**
+ * @ngdoc module
+ * @name material.core.theming
+ * @description
+ * Theming
+ */
 angular.module('material.core.theming', ['material.core.theming.palette'])
   .directive('mdTheme', ThemingDirective)
   .directive('mdThemable', ThemableDirective)
@@ -419,12 +425,32 @@ function ThemingDirective($mdTheming, $interpolate, $log) {
     priority: 100,
     link: {
       pre: function(scope, el, attrs) {
+        var registeredCallbacks = [];
         var ctrl = {
-          $setTheme: function(theme) {
+          registerChanges: function (cb, context) {
+            if (context) {
+              cb = angular.bind(context, cb);
+            }
+
+            registeredCallbacks.push(cb);
+
+            return function () {
+              var index = registeredCallbacks.indexOf(cb);
+
+              if (index > -1) {
+                registeredCallbacks.splice(index, 1);
+              }
+            }
+          },
+          $setTheme: function (theme) {
             if (!$mdTheming.registered(theme)) {
               $log.warn('attempted to use unregistered theme \'' + theme + '\'');
             }
             ctrl.$mdTheme = theme;
+
+            registeredCallbacks.forEach(function (cb) {
+              cb();
+            })
           }
         };
         el.data('$mdThemeController', ctrl);
@@ -500,7 +526,7 @@ function parseRules(theme, colorType, rules) {
 var rulesByType = {};
 
 // Generate our themes at run time given the state of THEMES and PALETTES
-function generateAllThemes($injector, $mdTheming ) {
+function generateAllThemes($injector, $mdTheming) {
   var head = document.head;
   var firstChild = head ? head.firstElementChild : null;
   var themeCss = !disableTheming && $injector.has('$MD_THEME_CSS') ? $injector.get('$MD_THEME_CSS') : '';
@@ -555,7 +581,7 @@ function generateAllThemes($injector, $mdTheming ) {
   if (generateOnDemand) return;
 
   angular.forEach($mdTheming.THEMES, function(theme) {
-    if (!GENERATED[theme.name]) {
+    if (!GENERATED[theme.name] && !($mdTheming.defaultTheme() !== 'default' && theme.name === 'default')) {
       generateTheme(theme, theme.name, nonce);
     }
   });
@@ -643,12 +669,6 @@ function generateTheme(theme, name, nonce) {
         }
       }
     });
-
-
-    if (theme.colors.primary.name == theme.colors.accent.name) {
-      console.warn('$mdThemingProvider: Using the same palette for primary and' +
-                   ' accent. This violates the material design spec.');
-    }
 
     GENERATED[theme.name] = true;
   }

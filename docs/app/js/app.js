@@ -8,8 +8,9 @@ var DocsApp = angular.module('docsApp', [ 'angularytics', 'ngRoute', 'ngMessages
   '$routeProvider',
   '$locationProvider',
   '$mdThemingProvider',
+  '$mdIconProvider',
 function(SERVICES, COMPONENTS, DEMOS, PAGES,
-    $routeProvider, $locationProvider, $mdThemingProvider) {
+    $routeProvider, $locationProvider, $mdThemingProvider, $mdIconProvider) {
   $locationProvider.html5Mode(true);
 
   $routeProvider
@@ -62,6 +63,8 @@ function(SERVICES, COMPONENTS, DEMOS, PAGES,
     .primaryPalette('yellow')
     .dark();
 
+  $mdIconProvider.icon('md-toggle-arrow', 'img/icons/toggle-arrow.svg', 48);
+
   $mdThemingProvider.theme('default')
       .primaryPalette('docs-blue')
       .accentPalette('docs-red');
@@ -93,7 +96,7 @@ function(SERVICES, COMPONENTS, DEMOS, PAGES,
     $routeProvider.when('/' + service.url, {
       templateUrl: service.outputPath,
       resolve: {
-        component: angular.noop,
+        component: function() { return { isService: true } },
         doc: function() { return service; }
       },
       controller: 'ComponentDocCtrl'
@@ -287,6 +290,10 @@ function(SERVICES, COMPONENTS, DEMOS, PAGES, $location, $rootScope, $http, $wind
     {
       name: 'Services',
       pages: apiDocs.service.sort(sortByName),
+      type: 'toggle'
+    },{
+      name: 'Types',
+      pages: apiDocs.type.sort(sortByName),
       type: 'toggle'
     },{
       name: 'Directives',
@@ -718,9 +725,8 @@ function($scope, doc, component, $rootScope) {
   '$scope',
   'component',
   'demos',
-  '$http',
-  '$templateCache',
-function($rootScope, $scope, component, demos, $http, $templateCache) {
+  '$templateRequest',
+function($rootScope, $scope, component, demos, $templateRequest) {
   $rootScope.currentComponent = component;
   $rootScope.currentDoc = null;
 
@@ -733,9 +739,9 @@ function($rootScope, $scope, component, demos, $http, $templateCache) {
       .concat(demo.css || [])
       .concat(demo.html || []);
     files.forEach(function(file) {
-      file.httpPromise =$http.get(file.outputPath, {cache: $templateCache})
+      file.httpPromise = $templateRequest(file.outputPath)
         .then(function(response) {
-          file.contents = response.data
+          file.contents = response
             .replace('<head/>', '');
           return file.contents;
         });
@@ -768,10 +774,22 @@ function($rootScope, $scope, component, demos, $http, $templateCache) {
 })
 
 .filter('directiveBrackets', function() {
-  return function(str) {
-    if (str.indexOf('-') > -1) {
-      return '<' + str + '>';
+  return function(str, restrict) {
+    if (restrict) {
+      // If it is restricted to only attributes
+      if (!restrict.element && restrict.attribute) {
+        return '[' + str + ']';
+      }
+      
+      // If it is restricted to elements and isn't a service
+      if (restrict.element && str.indexOf('-') > -1) {
+        return '<' + str + '>';
+      }
+      
+      // TODO: Handle class/comment restrictions if we ever have any to document
     }
+    
+    // Just return the original string if we don't know what to do with it
     return str;
   };
 });

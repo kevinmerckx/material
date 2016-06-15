@@ -209,6 +209,12 @@ describe('md-input-container directive', function() {
     expect(el.find('label').attr('for')).toBe(el.find('input').attr('id'));
   });
 
+  it('should set the "step" attribute to "any" if "min" and "max" are specified', function() {
+    // check #7349 for more info
+    var el = setup('type="number" min="1" max="999"');
+    expect(el.find('input').attr('step')).toBe('any');
+  });
+
   describe('md-no-asterisk', function() {
 
     it('should not show asterisk on required label if disabled', function() {
@@ -346,6 +352,49 @@ describe('md-input-container directive', function() {
     expect(label.textContent).toEqual('some placeholder');
   });
 
+  it('should not create a floating label from a placeholder if md-no-float is empty', function () {
+    var el = compile(
+      '<md-input-container md-no-float>' +
+      '  <input placeholder="Foo" ng-model="foo">' +
+      '</md-input-container>'
+    );
+
+    expect(el.find('label').length).toBe(0);
+  });
+
+  it('should not create a floating label from a placeholder if md-no-float is truthy', function () {
+    pageScope.inputs = [{
+      placeholder: 'Name',
+      model: ''
+    }, {
+      placeholder: 'Email',
+      model: ''
+    }];
+
+    var el = compile(
+      '<div>' +
+      '  <md-input-container ng-repeat="input in inputs" md-no-float="$index !== 0">' +
+      '    <input placeholder="{{input.placeholder}}" ng-model="input.model">' +
+      '  </md-input-container>' +
+      '</div>'
+    );
+
+    var labels = el.find('label');
+
+    expect(labels.length).toBe(1);
+    expect(labels[0].textContent).toEqual('Name');
+  });
+
+  it('should create a floating label from a placeholder if md-no-float is falsey', function () {
+    var el = compile(
+      '<md-input-container md-no-float="false">' +
+      '  <input placeholder="Foo" ng-model="foo">' +
+      '</md-input-container>'
+    );
+
+    expect(el.find('label').length).toBe(1);
+  });
+
   it('should ignore placeholder when a label element is present', inject(function($rootScope, $compile) {
     var el = $compile(
       '<md-input-container>' +
@@ -436,6 +485,59 @@ describe('md-input-container directive', function() {
     expect(el[0].querySelector("[ng-messages]").classList.contains('md-auto-hide')).toBe(false);
   }));
 
+  it('should set the animation class on the ngMessage properly', inject(function() {
+    var element = compile(
+      '<md-input-container>' +
+        '<input ng-model="inputVal">' +
+        '<div ng-messages>' +
+          '<ng-message id="requiredMessage" when="required">Field required</ng-message>' +
+        '</div>' +
+      '</md-input-container>'
+    );
+
+    var ngMessage = element.find('ng-message');
+    expect(ngMessage).toHaveClass('md-input-message-animation');
+  }));
+
+  it('should set the animation class on a transcluded ngMessage', function() {
+    // We can emulate the transclusion, by wrapping the ngMessage inside of a document fragment.
+    // It is not necessary to add a *extra* component / directive for that, since we just
+    // want to the test the DocumentFragment detection.
+    var fragment = document.createDocumentFragment();
+
+    var inputContainer = compile(
+      '<md-input-container>' +
+        '<input ng-model="inputVal">' +
+        '<div ng-messages id="messageInsertion">' +
+        '</div>' +
+      '</md-input-container>'
+    );
+
+    // We build our element, without compiling and linking it.
+    // Because we invoke those steps manually during the tests.
+    var messageElement = angular.element(
+      '<ng-message id="requiredMessage" when="required">Field Required</ng-message>'
+    );
+
+    fragment.appendChild(messageElement[0]);
+
+    // Only compile the element at this time, and link it to its scope later.
+    // Normally the directive will add the animation class upon compile.
+    var linkFn = $compile(messageElement);
+
+    expect(messageElement).not.toHaveClass('md-input-message-animation');
+
+    // Now we emulate the finish of the transclusion.
+    // We move the element from the fragment into the correct input
+    // container.
+    inputContainer[0].appendChild(messageElement[0]);
+
+    // Manually invoke the postLink function of the directive.
+    linkFn($rootScope.$new());
+
+    expect(messageElement).toHaveClass('md-input-message-animation');
+  });
+
   it('should select the input value on focus', inject(function($timeout) {
     var container = setup('md-select-on-focus');
     var input = container.find('input');
@@ -489,10 +591,27 @@ describe('md-input-container directive', function() {
       var oldHeight = textarea.offsetHeight;
       ngTextarea.val('Multiple\nlines\nof\ntext');
       ngTextarea.triggerHandler('input');
-      scope.$apply();
+      expect(textarea.offsetHeight).toBeGreaterThan(oldHeight);
+    });
+
+    it('should auto-size the textarea in response to an outside ngModel change', function() {
+      createAndAppendElement('ng-model="model"');
+      var oldHeight = textarea.offsetHeight;
+      scope.model = '1\n2\n3\n';
       $timeout.flush();
-      var newHeight = textarea.offsetHeight;
-      expect(newHeight).toBeGreaterThan(oldHeight);
+      expect(textarea.offsetHeight).toBeGreaterThan(oldHeight);
+    });
+
+    it('should allow the textarea to shrink if text is being deleted', function() {
+      createAndAppendElement();
+      ngTextarea.val('Multiple\nlines\nof\ntext');
+      ngTextarea.triggerHandler('input');
+      var oldHeight = textarea.offsetHeight;
+
+      ngTextarea.val('One line of text');
+      ngTextarea.triggerHandler('input');
+
+      expect(textarea.offsetHeight).toBeLessThan(oldHeight);
     });
 
     it('should not auto-size if md-no-autogrow is present', function() {
@@ -500,8 +619,6 @@ describe('md-input-container directive', function() {
       var oldHeight = textarea.offsetHeight;
       ngTextarea.val('Multiple\nlines\nof\ntext');
       ngTextarea.triggerHandler('input');
-      scope.$apply();
-      $timeout.flush();
       var newHeight = textarea.offsetHeight;
       expect(newHeight).toEqual(oldHeight);
     });
@@ -515,7 +632,6 @@ describe('md-input-container directive', function() {
       ngTextarea.val('Multiple\nlines\nof\ntext');
       ngTextarea.triggerHandler('input');
       scope.$apply();
-      $timeout.flush();
 
       // Textarea should still be hidden.
       expect(textarea.offsetHeight).toBe(0);
@@ -523,25 +639,66 @@ describe('md-input-container directive', function() {
       scope.parentHidden = false;
       scope.$apply();
 
-      $timeout.flush();
       var newHeight = textarea.offsetHeight;
       expect(textarea.offsetHeight).toBeGreaterThan(oldHeight);
     });
 
-    it('should make the textarea scrollable once it has reached the row limit', function() {
-      var scrollableClass = '_md-textarea-scrollable';
+    it('should set the rows attribute as the user types', function() {
+      createAndAppendElement();
+      expect(textarea.rows).toBe(1);
 
-      createAndAppendElement('rows="2"');
-
-      ngTextarea.val('Single line of text');
+      ngTextarea.val('1\n2\n3');
       ngTextarea.triggerHandler('input');
+      expect(textarea.rows).toBe(3);
+    });
 
-      expect(ngTextarea.hasClass(scrollableClass)).toBe(false);
-
-      ngTextarea.val('Multiple\nlines\nof\ntext');
+    it('should not allow the textarea rows to be less than the minimum number of rows', function() {
+      createAndAppendElement('rows="5"');
+      ngTextarea.val('1\n2\n3\n4\n5\n6\n7');
       ngTextarea.triggerHandler('input');
+      expect(textarea.rows).toBe(7);
 
-      expect(ngTextarea.hasClass(scrollableClass)).toBe(true);
+      ngTextarea.val('');
+      ngTextarea.triggerHandler('input');
+      expect(textarea.rows).toBe(5);
+    });
+
+    it('should not let a textarea grow past its maximum number of rows', function() {
+      createAndAppendElement('max-rows="5"');
+      ngTextarea.val('1\n2\n3');
+      ngTextarea.triggerHandler('input');
+      expect(textarea.rows).toBe(3);
+      expect(ngTextarea.attr('md-no-autogrow')).toBeUndefined();
+
+      ngTextarea.val('1\n2\n3\n4\n5\n6\n7\n8\n9');
+      ngTextarea.triggerHandler('input');
+      expect(textarea.rows).toBe(5);
+      expect(ngTextarea.attr('md-no-autogrow')).toBeDefined();
+    });
+
+    it('should add a handle for resizing the textarea', function() {
+      createAndAppendElement();
+      expect(element.querySelector('.md-resize-handle')).toBeTruthy();
+    });
+
+    it('should disable auto-sizing if the handle gets dragged', function() {
+      createAndAppendElement();
+      var handle = angular.element(element.querySelector('.md-resize-handle'));
+
+      ngTextarea.val('1\n2\n3');
+      ngTextarea.triggerHandler('input');
+      var oldHeight = textarea.offsetHeight;
+
+      handle.triggerHandler('mousedown');
+      ngElement.triggerHandler('$md.dragstart');
+      ngTextarea.val('1\n2\n3\n4\n5\n6');
+      ngTextarea.triggerHandler('input');
+      expect(textarea.offsetHeight).toBe(oldHeight);
+    });
+
+    it('should not add the handle if md-no-resize is present', function() {
+      createAndAppendElement('md-no-resize');
+      expect(element.querySelector('.md-resize-handle')).toBeFalsy();
     });
   });
 
