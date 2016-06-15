@@ -168,7 +168,7 @@
           type="button"\
           aria-hidden="true"\
           tabindex="-1">\
-        <md-icon md-svg-icon="md-close"></md-icon>\
+        <md-icon md-svg-src="{{ $mdChipsCtrl.mdCloseIcon }}"></md-icon>\
         <span class="_md-visually-hidden">\
           {{$mdChipsCtrl.deleteButtonLabel}}\
         </span>\
@@ -177,7 +177,7 @@
   /**
    * MDChips Directive Definition
    */
-  function MdChips ($mdTheming, $mdUtil, $compile, $log, $timeout) {
+  function MdChips ($mdTheming, $mdUtil, $compile, $log, $timeout, $$mdSvgRegistry) {
     // Run our templates through $mdUtil.processTemplate() to allow custom start/end symbols
     var templates = getTemplates();
 
@@ -249,9 +249,17 @@
 
       var chipTemplate = getTemplateByQuery('md-chips>md-chip-template');
 
+      var chipRemoveSelector = $mdUtil
+        .prefixer()
+        .buildList('md-chip-remove')
+        .map(function(attr) {
+          return 'md-chips>*[' + attr + ']';
+        })
+        .join(',');
+
       // Set the chip remove, chip contents and chip input templates. The link function will put
       // them on the scope for transclusion later.
-      var chipRemoveTemplate   = getTemplateByQuery('md-chips>*[md-chip-remove]') || templates.remove,
+      var chipRemoveTemplate   = getTemplateByQuery(chipRemoveSelector) || templates.remove,
           chipContentsTemplate = chipTemplate || templates.default,
           chipInputTemplate    = getTemplateByQuery('md-chips>md-autocomplete')
               || getTemplateByQuery('md-chips>input')
@@ -285,6 +293,8 @@
         mdChipsCtrl.chipContentsTemplate = chipContentsTemplate;
         mdChipsCtrl.chipRemoveTemplate   = chipRemoveTemplate;
         mdChipsCtrl.chipInputTemplate    = chipInputTemplate;
+
+        mdChipsCtrl.mdCloseIcon = $$mdSvgRegistry.mdClose;
 
         element
             .attr({ 'aria-hidden': true, tabindex: -1 })

@@ -58,6 +58,14 @@ angular.module('material.core')
  *      <td>(min-width: 1920px)</td>
  *    </tr>
  *    <tr>
+ *      <td>landscape</td>
+ *      <td>landscape</td>
+ *    </tr>
+ *    <tr>
+ *      <td>portrait</td>
+ *      <td>portrait</td>
+ *    </tr>
+ *    <tr>
  *      <td>print</td>
  *      <td>print</td>
  *    </tr>
@@ -84,9 +92,9 @@ angular.module('material.core')
  *   $scope.anotherCustom = $mdMedia('max-width: 300px');
  * });
  * </hljs>
- * @ngInject
  */
 
+/* @ngInject */
 function mdMediaFactory($mdConstant, $rootScope, $window) {
   var queries = {};
   var mqls = {};

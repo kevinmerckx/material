@@ -826,6 +826,29 @@ describe('<md-select>', function() {
           expect($rootScope.testForm.$valid).toBe(false);
       }));
 
+      it('properly validates required attribute based on available options', inject(function($rootScope, $compile) {
+        var template =
+          '<form name="testForm">' +
+          '  <md-select ng-model="model" required="required">' +
+          '    <md-option ng-repeat="opt in opts" ng-value="opt"></md-option>' +
+          '  </md-select>' +
+          '</form>';
+        
+        $rootScope.opts = [1, 2, 3, 4];
+
+        $compile(template)($rootScope);
+
+        // Option 0 is not available; should be false
+        $rootScope.model = 0;
+        $rootScope.$digest();
+        expect($rootScope.testForm.$valid).toBe(false);
+        
+        // Option 1 is available; should be true
+        $rootScope.model = 1;
+        $rootScope.$digest();
+        expect($rootScope.testForm.$valid).toBe(true);
+      }));
+      
       it('should keep the form pristine when model is predefined', inject(function($rootScope, $timeout, $compile) {
         $rootScope.model = [1, 2];
         $rootScope.opts = [1, 2, 3, 4];
@@ -838,6 +861,29 @@ describe('<md-select>', function() {
 
         expect($rootScope.testForm.$pristine).toBe(true);
       }));
+
+      it('should correctly update the input containers label', inject(function($rootScope) {
+        var el = setupSelect('ng-required="isRequired" ng-model="someModel"');
+        var label = el.find('label');
+
+        expect(label).not.toHaveClass('md-required');
+
+        $rootScope.$apply('isRequired = true');
+
+        expect(label).toHaveClass('md-required');
+      }));
+
+      it('should correctly update the input containers label when asterisk is disabled', inject(function($rootScope) {
+        var el = setupSelect('ng-required="isRequired" md-no-asterisk ng-model="someModel"');
+        var label = el.find('label');
+
+        expect(label).not.toHaveClass('md-required');
+
+        $rootScope.$apply('isRequired = true');
+
+        expect(label).not.toHaveClass('md-required');
+      }));
+
     });
 
     describe('view->model', function() {

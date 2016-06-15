@@ -97,7 +97,7 @@ function mdListItemDirective($mdAria, $mdConstant, $mdUtil, $timeout) {
 
       tEl[0].setAttribute('role', 'listitem');
 
-      if (tAttrs.ngClick || tAttrs.ngHref || tAttrs.href || tAttrs.uiSref || tAttrs.ngAttrUiSref) {
+      if (tAttrs.ngClick || tAttrs.ngDblclick ||  tAttrs.ngHref || tAttrs.href || tAttrs.uiSref || tAttrs.ngAttrUiSref) {
         wrapIn('button');
       } else {
         for (var i = 0, type; type = proxiedTypes[i]; ++i) {
@@ -170,10 +170,6 @@ function mdListItemDirective($mdAria, $mdConstant, $mdUtil, $timeout) {
           wrapSecondaryItem(secondaryItem, secondaryItemsWrapper);
         });
 
-        // Since the secondary item container is static we need to fill the remaing space.
-        var spaceFiller = angular.element('<div class="flex"></div>');
-        itemContainer.append(spaceFiller);
-
         itemContainer.append(secondaryItemsWrapper);
       }
 
@@ -198,8 +194,10 @@ function mdListItemDirective($mdAria, $mdConstant, $mdUtil, $timeout) {
       }
 
       function copyAttributes(item, wrapper) {
-        var copiedAttrs = ['ng-if', 'ng-click', 'aria-label', 'ng-disabled',
-          'ui-sref', 'href', 'ng-href', 'target', 'ng-attr-ui-sref', 'ui-sref-opts'];
+        var copiedAttrs = $mdUtil.prefixer([
+          'ng-if', 'ng-click', 'ng-dblclick', 'aria-label', 'ng-disabled', 'ui-sref',
+          'href', 'ng-href', 'target', 'ng-attr-ui-sref', 'ui-sref-opts'
+        ]);
 
         angular.forEach(copiedAttrs, function(attr) {
           if (item.hasAttribute(attr)) {

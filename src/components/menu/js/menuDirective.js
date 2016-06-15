@@ -102,7 +102,22 @@
  *   <!-- menu-content -->
  * </md-menu>
  * </hljs>
-
+ *
+ * ### Auto Focus
+ * By default, when a menu opens, `md-menu` focuses the first button in the menu content.
+ * 
+ * But sometimes you would like to focus another specific menu item instead of the first.<br/>
+ * This can be done by applying the `md-autofocus` directive on the given element.
+ *
+ * <hljs lang="html">
+ * <md-menu-item>
+ *   <md-button md-autofocus ng-click="doSomething()">
+ *     Auto Focus
+ *   </md-button>
+ * </md-menu-item>
+ * </hljs>
+ *
+ *
  * ### Preventing close
  *
  * Sometimes you would like to be able to click on a menu item without having the menu
@@ -160,8 +175,11 @@ function MenuDirective($mdUtil) {
   function compile(templateElement) {
     templateElement.addClass('md-menu');
     var triggerElement = templateElement.children()[0];
-    if (!triggerElement.hasAttribute('ng-click')) {
-      triggerElement = triggerElement.querySelector('[ng-click],[ng-mouseenter]') || triggerElement;
+    var prefixer = $mdUtil.prefixer();
+
+    if (!prefixer.hasAttribute(triggerElement, 'ng-click')) {
+      triggerElement = triggerElement
+          .querySelector(prefixer.buildSelector(['ng-click', 'ng-mouseenter'])) || triggerElement;
     }
     if (triggerElement && (
       triggerElement.nodeName == 'MD-BUTTON' ||
