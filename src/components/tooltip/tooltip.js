@@ -295,7 +295,11 @@ function MdTooltipDirective($timeout, $window, $$rAF, $document, $mdUtil, $mdThe
 
       // Insert the element and position at top left, so we can get the position
       // and check if we should display it
-      element.css({top: 0, left: 0});
+      // FIX: tooltips seem to fly from the top left sometimes
+      // instead of putting it to the top left, we hide it
+      // element.css({top: 0, left: 0});      
+      element.css({visibility: 'hidden'});
+      
       tooltipParent.append(element);
 
       // Check if we should display it or not.
@@ -307,6 +311,7 @@ function MdTooltipDirective($timeout, $window, $$rAF, $document, $mdUtil, $mdThe
       }
 
       updatePosition();
+      element.css({visibility: 'visible'});
 
       angular.forEach([element, content], function (element) {
         $animate.addClass(element, '_md-show');
