@@ -54,7 +54,7 @@ function InterimElementProvider() {
      */
     provider.addPreset('build', {
       methods: ['controller', 'controllerAs', 'resolve',
-        'template', 'templateUrl', 'themable', 'transformTemplate', 'parent', 'contentElement']
+        'template', 'templateUrl', 'themable', 'transformTemplate', 'parent']
     });
 
     return provider;
@@ -257,20 +257,15 @@ function InterimElementProvider() {
        * A service used to control inserting and removing an element into the DOM.
        *
        */
-
-      var service;
-
-      var showPromises = []; // Promises for the interim's which are currently opening.
-      var hidePromises = []; // Promises for the interim's which are currently hiding.
-      var showingInterims = []; // Interim elements which are currently showing up.
+      var service, stack = [];
 
       // Publish instance $$interimElement service;
       // ... used as $mdDialog, $mdToast, $mdMenu, and $mdSelect
 
       return service = {
         show: show,
-        hide: waitForInterim(hide),
-        cancel: waitForInterim(cancel),
+        hide: hide,
+        cancel: cancel,
         destroy : destroy,
         $injector_: $injector
       };
@@ -291,34 +286,25 @@ function InterimElementProvider() {
       function show(options) {
         options = options || {};
         var interimElement = new InterimElement(options || {});
-
         // When an interim element is currently showing, we have to cancel it.
         // Just hiding it, will resolve the InterimElement's promise, the promise should be
         // rejected instead.
-        var hideAction = options.multiple ? $q.resolve() : $q.all(showPromises);
+        var hideExisting = !options.skipHide && stack.length ? service.cancel() : $q.when(true);
 
-        if (!options.multiple) {
-          // Wait for all opening interim's to finish their transition.
-          hideAction = hideAction.then(function() {
-            // Wait for all closing and showing interim's to be completely closed.
-            var promiseArray = hidePromises.concat(showingInterims.map(service.cancel));
-            return $q.all(promiseArray);
-          });
-        }
+        // This hide()s only the current interim element before showing the next, new one
+        // NOTE: this is not reversible (e.g. interim elements are not stackable)
 
-        var showAction = hideAction.then(function() {
+        hideExisting.finally(function() {
 
-          return interimElement
+          stack.push(interimElement);
+          interimElement
             .show()
-            .catch(function(reason) { return reason; })
-            .finally(function() {
-              showPromises.splice(showPromises.indexOf(showAction), 1);
-              showingInterims.push(interimElement);
+            .catch(function( reason ) {
+              //$log.error("InterimElement.show() error: " + reason );
+              return reason;
             });
 
         });
-
-        showPromises.push(showAction);
 
         // Return a promise that will be resolved when the interim
         // element is hidden or cancelled...
@@ -339,30 +325,27 @@ function InterimElementProvider() {
        *
        */
       function hide(reason, options) {
+        if ( !stack.length ) return $q.when(reason);
         options = options || {};
 
         if (options.closeAll) {
-          // We have to make a shallow copy of the array, because otherwise the map will break.
-          return $q.all(showingInterims.slice().reverse().map(closeElement));
+          var promise = $q.all(stack.reverse().map(closeElement));
+          stack = [];
+          return promise;
         } else if (options.closeTo !== undefined) {
-          return $q.all(showingInterims.slice(options.closeTo).map(closeElement));
+          return $q.all(stack.splice(options.closeTo).map(closeElement));
+        } else {
+          var interim = stack.pop();
+          return closeElement(interim);
         }
 
-        // Hide the latest showing interim element.
-        return closeElement(showingInterims.pop());
-
         function closeElement(interim) {
-
-          var hideAction = interim
+          interim
             .remove(reason, false, options || { })
-            .catch(function(reason) { return reason; })
-            .finally(function() {
-              hidePromises.splice(hidePromises.indexOf(hideAction), 1);
+            .catch(function( reason ) {
+              //$log.error("InterimElement.hide() error: " + reason );
+              return reason;
             });
-
-          showingInterims.splice(showingInterims.indexOf(interim), 1);
-          hidePromises.push(hideAction);
-
           return interim.deferred.promise;
         }
       }
@@ -380,19 +363,15 @@ function InterimElementProvider() {
        *
        */
       function cancel(reason, options) {
-        var interim = showingInterims.pop();
-        if (!interim) {
-          return $q.when(reason);
-        }
+        var interim = stack.pop();
+        if ( !interim ) return $q.when(reason);
 
-        var cancelAction = interim
-          .remove(reason, true, options || {})
-          .catch(function(reason) { return reason; })
-          .finally(function() {
-            hidePromises.splice(hidePromises.indexOf(cancelAction), 1);
+        interim
+          .remove(reason, true, options || { })
+          .catch(function( reason ) {
+            //$log.error("InterimElement.cancel() error: " + reason );
+            return reason;
           });
-
-        hidePromises.push(cancelAction);
 
         // Since Angular 1.6.7, promises will be logged to $exceptionHandler when the promise
         // is not handling the rejection. We create a pseudo catch handler, which will prevent the
@@ -400,56 +379,30 @@ function InterimElementProvider() {
         return interim.deferred.promise.catch(angular.noop);
       }
 
-      /**
-       * Creates a function to wait for at least one interim element to be available.
-       * @param callbackFn Function to be used as callback
-       * @returns {Function}
-       */
-      function waitForInterim(callbackFn) {
-        return function() {
-          var fnArguments = arguments;
-
-          if (!showingInterims.length) {
-            // When there are still interim's opening, then wait for the first interim element to
-            // finish its open animation.
-            if (showPromises.length) {
-              return showPromises[0].finally(function () {
-                return callbackFn.apply(service, fnArguments);
-              });
-            }
-
-            return $q.when("No interim elements currently showing up.");
-          }
-
-          return callbackFn.apply(service, fnArguments);
-        };
-      }
-
       /*
        * Special method to quick-remove the interim element without animations
        * Note: interim elements are in "interim containers"
        */
-      function destroy(targetEl) {
-        var interim = !targetEl ? showingInterims.shift() : null;
+      function destroy(target) {
+        var interim = !target ? stack.shift() : null;
+        var cntr = angular.element(target).length ? angular.element(target)[0].parentNode : null;
 
-        var parentEl = angular.element(targetEl).length && angular.element(targetEl)[0].parentNode;
+        if (cntr) {
+            // Try to find the interim element in the stack which corresponds to the supplied DOM element.
+            var filtered = stack.filter(function(entry) {
+                  var currNode = entry.options.element[0];
+                  return  (currNode === cntr);
+                });
 
-        if (parentEl) {
-          // Try to find the interim in the stack which corresponds to the supplied DOM element.
-          var filtered = showingInterims.filter(function(entry) {
-            return entry.options.element[0] === parentEl;
-          });
-
-          // Note: This function might be called when the element already has been removed,
-          // in which case we won't find any matches.
-          if (filtered.length) {
-            interim = filtered[0];
-            showingInterims.splice(showingInterims.indexOf(interim), 1);
-          }
+            // Note: this function might be called when the element already has been removed, in which
+            //       case we won't find any matches. That's ok.
+            if (filtered.length > 0) {
+              interim = filtered[0];
+              stack.splice(stack.indexOf(interim), 1);
+            }
         }
 
-        return interim ? interim.remove(SHOW_CANCELLED, false, { '$destroy': true }) :
-                         $q.when(SHOW_CANCELLED);
+        return interim ? interim.remove(SHOW_CANCELLED, false, {'$destroy':true}) : $q.when(SHOW_CANCELLED);
       }
 
       /*
@@ -482,9 +435,6 @@ function InterimElementProvider() {
             compileElement(options)
               .then(function( compiledData ) {
                 element = linkElement( compiledData, options );
-
-                // Expose the cleanup function from the compiler.
-                options.cleanupElement = compiledData.cleanup;
 
                 showAction = showElement(element, options, compiledData.controller)
                   .then(resolve, rejectAll);
@@ -662,14 +612,14 @@ function InterimElementProvider() {
             autoHideTimer = $timeout(service.hide, options.hideDelay) ;
             cancelAutoHide = function() {
               $timeout.cancel(autoHideTimer);
-            };
+            }
           }
 
           // Cache for subsequent use
           options.cancelAutoHide = function() {
             cancelAutoHide();
             options.cancelAutoHide = undefined;
-          };
+          }
         }
 
         /**
@@ -713,7 +663,7 @@ function InterimElementProvider() {
               // Trigger callback *before* the remove operation starts
               announceRemoving(element, action);
 
-              if ( options.$destroy ) {
+              if ( options.$destroy == true ) {
 
                 // For $destroy, onRemove should be synchronous
                 resolve(element);

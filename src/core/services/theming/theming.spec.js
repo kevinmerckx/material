@@ -582,12 +582,12 @@ describe('$mdThemeProvider with disabled themes', function() {
   describe('can disable themes declaratively', function() {
     beforeEach(function() {
       // Set the body attribute BEFORE the theming module is loaded
-      var el = document.body;
+      var el = document.getElementsByTagName('body')[0];
           el.setAttribute('md-themes-disabled', '');
     });
 
     afterEach(function() {
-      var el = document.body;
+      var el = document.getElementsByTagName('body')[0];
           el.removeAttribute('md-themes-disabled');
     });
 

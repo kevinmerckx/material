@@ -133,12 +133,18 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
     },
 
     /**
-     * Determines the absolute position of the viewport.
-     * Useful when making client rectangles absolute.
-     * @returns {number}
+     * Calculate the positive scroll offset
+     * TODO: Check with pinch-zoom in IE/Chrome;
+     *       https://code.google.com/p/chromium/issues/detail?id=496285
      */
-    getViewportTop: function() {
-      return window.scrollY || window.pageYOffset || 0;
+    scrollTop: function(element) {
+      element = angular.element(element || $document[0].body);
+
+      var body = (element[0] == $document[0].body) ? $document[0].body : undefined;
+      var scrollTop = body ? body.scrollTop + body.parentElement.scrollTop : 0;
+
+      // Calculate the positive scroll offset
+      return scrollTop || Math.abs(element[0].getBoundingClientRect().top);
     },
 
     /**
@@ -198,56 +204,44 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
      *     use the passed parent element.
      */
     disableScrollAround: function(element, parent, options) {
-      options = options || {};
+      $mdUtil.disableScrollAround._count = $mdUtil.disableScrollAround._count || 0;
+      ++$mdUtil.disableScrollAround._count;
+      if ($mdUtil.disableScrollAround._enableScrolling) return $mdUtil.disableScrollAround._enableScrolling;
+      var body = $document[0].body,
+        restoreBody = disableBodyScroll(),
+        restoreElement = disableElementScroll(parent);
 
-      $mdUtil.disableScrollAround._count = Math.max(0, $mdUtil.disableScrollAround._count || 0);
-      $mdUtil.disableScrollAround._count++;
-
-      if ($mdUtil.disableScrollAround._restoreScroll) {
-        return $mdUtil.disableScrollAround._restoreScroll;
-      }
-
-      var body = $document[0].body;
-      var restoreBody = disableBodyScroll();
-      var restoreElement = disableElementScroll(parent);
-
-      return $mdUtil.disableScrollAround._restoreScroll = function() {
-        if (--$mdUtil.disableScrollAround._count <= 0) {
+      return $mdUtil.disableScrollAround._enableScrolling = function() {
+        if (!--$mdUtil.disableScrollAround._count) {
           restoreBody();
           restoreElement();
-          delete $mdUtil.disableScrollAround._restoreScroll;
+          delete $mdUtil.disableScrollAround._enableScrolling;
         }
       };
 
-      /**
-       * Creates a virtual scrolling mask to prevent touchmove, keyboard, scrollbar clicking,
-       * and wheel events
-       */
+      // Creates a virtual scrolling mask to absorb touchmove, keyboard, scrollbar clicking, and wheel events
       function disableElementScroll(element) {
         element = angular.element(element || body);
-
         var scrollMask;
-
-        if (options.disableScrollMask) {
+        if (options && options.disableScrollMask) {
           scrollMask = element;
         } else {
+          element = element[0];
           scrollMask = angular.element(
             '<div class="md-scroll-mask">' +
             '  <div class="md-scroll-mask-bar"></div>' +
             '</div>');
-          element.append(scrollMask);
+          element.appendChild(scrollMask[0]);
         }
 
         scrollMask.on('wheel', preventDefault);
         scrollMask.on('touchmove', preventDefault);
 
-        return function restoreElementScroll() {
+        return function restoreScroll() {
           scrollMask.off('wheel');
           scrollMask.off('touchmove');
-
-          if (!options.disableScrollMask) {
-            scrollMask[0].parentNode.removeChild(scrollMask[0]);
-          }
+          scrollMask[0].parentNode.removeChild(scrollMask[0]);
+          delete $mdUtil.disableScrollAround._enableScrolling;
         };
 
         function preventDefault(e) {
@@ -257,46 +251,42 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
 
       // Converts the body to a position fixed block and translate it to the proper scroll position
       function disableBodyScroll() {
-        var documentElement = $document[0].documentElement;
-
-        var prevDocumentStyle = documentElement.style.cssText || '';
-        var prevBodyStyle = body.style.cssText || '';
-
-        var viewportTop = $mdUtil.getViewportTop();
+        var htmlNode = body.parentNode;
+        var restoreHtmlStyle = htmlNode.style.cssText || '';
+        var restoreBodyStyle = body.style.cssText || '';
+        var scrollOffset = $mdUtil.scrollTop(body);
         var clientWidth = body.clientWidth;
 
         if (body.scrollHeight > body.clientHeight + 1) {
-
-          angular.element(body).css({
+          applyStyles(body, {
             position: 'fixed',
             width: '100%',
-            top: -viewportTop + 'px'
+            top: -scrollOffset + 'px'
           });
 
-          documentElement.style.overflowY = 'scroll';
+          htmlNode.style.overflowY = 'scroll';
         }
 
-        if (body.clientWidth < clientWidth) {
-          body.style.overflow = 'hidden';
-        }
+        if (body.clientWidth < clientWidth) applyStyles(body, {overflow: 'hidden'});
 
         return function restoreScroll() {
-          // Reset the inline style CSS to the previous.
-          body.style.cssText = prevBodyStyle;
-          documentElement.style.cssText = prevDocumentStyle;
-
-          // The body loses its scroll position while being fixed.
-          body.scrollTop = viewportTop;
+          body.style.cssText = restoreBodyStyle;
+          htmlNode.style.cssText = restoreHtmlStyle;
+          body.scrollTop = scrollOffset;
+          htmlNode.scrollTop = scrollOffset;
         };
       }
 
+      function applyStyles(el, styles) {
+        for (var key in styles) {
+          el.style[key] = styles[key];
+        }
+      }
     },
-
     enableScrolling: function() {
-      var restoreFn = this.disableScrollAround._restoreScroll;
-      restoreFn && restoreFn();
+      var method = this.disableScrollAround._enableScrolling;
+      method && method();
     },
-
     floatingScrollbars: function() {
       if (this.floatingScrollbars.cached === undefined) {
         var tempNode = angular.element('<div><div></div></div>').css({
@@ -520,7 +510,7 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
       if ( angular.isString(validateWith) ) {
         var tagName = validateWith.toUpperCase();
         validateWith = function(el) {
-          return el.nodeName.toUpperCase() === tagName;
+          return el.nodeName === tagName;
         };
       }
 
@@ -786,18 +776,18 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
 
       function scrollChunk() {
         var newPosition = calculateNewPosition();
-
+        
         element.scrollTop = newPosition;
-
+        
         if (scrollingDown ? newPosition < scrollEnd : newPosition > scrollEnd) {
           $$rAF(scrollChunk);
         }
       }
-
+      
       function calculateNewPosition() {
         var duration = 1000;
         var currentTime = $mdUtil.now() - startTime;
-
+        
         return ease(currentTime, scrollStart, scrollChange, duration);
       }
 
@@ -807,7 +797,7 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
         if (currentTime > duration) {
           return start + change;
         }
-
+        
         var ts = (currentTime /= duration) * currentTime;
         var tc = ts * currentTime;
 

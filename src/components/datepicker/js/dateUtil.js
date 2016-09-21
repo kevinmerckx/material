@@ -192,7 +192,7 @@
      * @return {boolean} Whether the date is a valid Date.
      */
     function isValidDate(date) {
-      return date && date.getTime && !isNaN(date.getTime());
+      return date != null && date.getTime && !isNaN(date.getTime());
     }
 
     /**

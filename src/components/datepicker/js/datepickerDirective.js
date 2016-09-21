@@ -552,7 +552,12 @@
       this.ngModelCtrl.$setValidity('valid', date == null);
     }
 
-    angular.element(this.inputContainer).toggleClass(INVALID_CLASS, !this.ngModelCtrl.$valid);
+    // TODO(jelbourn): Change this to classList.toggle when we stop using PhantomJS in unit tests
+    // because it doesn't conform to the DOMTokenList spec.
+    // See https://github.com/ariya/phantomjs/issues/12782.
+    if (!this.ngModelCtrl.$valid) {
+      this.inputContainer.classList.add(INVALID_CLASS);
+    }
   };
 
   /** Clears any error flags set by `updateErrorState`. */

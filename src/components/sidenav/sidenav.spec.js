@@ -1,14 +1,14 @@
 describe('mdSidenav', function() {
   beforeEach(module('material.components.sidenav'));
 
-  function setup(attrs, skipInitialDigest) {
+  function setup(attrs) {
     var el;
     inject(function($compile, $rootScope) {
       var parent = angular.element('<div>');
       el = angular.element('<md-sidenav ' + (attrs || '') + '>');
       parent.append(el);
       $compile(parent)($rootScope);
-      !skipInitialDigest && $rootScope.$apply();
+      $rootScope.$apply();
     });
     return el;
   }
@@ -164,22 +164,6 @@ describe('mdSidenav', function() {
       });
     });
 
-    it('should trigger a resize event when opening',
-      inject(function($rootScope, $material, $window) {
-        var el = setup('md-is-open="show"');
-        var obj = { callback: function() {} };
-
-        spyOn(obj, 'callback');
-        angular.element($window).on('resize', obj.callback);
-
-        $rootScope.$apply('show = true');
-        $material.flushOutstandingAnimations();
-
-        expect(obj.callback).toHaveBeenCalled();
-        angular.element($window).off('resize', obj.callback);
-      })
-    );
-
     describe('parent scroll prevention', function() {
       it('should prevent scrolling on the parent element', inject(function($rootScope) {
         var parent = setup('md-is-open="isOpen"').parent()[0];
@@ -225,13 +209,13 @@ describe('mdSidenav', function() {
 
   describe('controller', function() {
     it('should create controller', function() {
-      var el = setup();
+      var el = setup('');
       var controller = el.controller('mdSidenav');
       expect(controller).not.toBe(undefined);
     });
 
     it('should open and close and toggle', inject(function($timeout) {
-      var el = setup();
+      var el = setup('');
       var scope = el.isolateScope();
       var controller = el.controller('mdSidenav');
 
@@ -270,7 +254,7 @@ describe('mdSidenav', function() {
     }));
 
     it('should open(), close(), and toggle() with promises', function() {
-      var el = setup();
+      var el = setup('');
       var scope = el.isolateScope();
       var controller = el.controller('mdSidenav');
 
@@ -314,7 +298,7 @@ describe('mdSidenav', function() {
     });
 
     it('should open() to work multiple times before close()', function() {
-      var el = setup();
+      var el = setup('');
       var controller = el.controller('mdSidenav');
 
       var openDone = 0, closeDone = 0;
@@ -408,35 +392,23 @@ describe('mdSidenav', function() {
   });
 
   describe('$mdSidenav lookups', function() {
-    var $rootScope, $timeout, $mdSidenav;
+    var $rootScope, $timeout;
 
-    beforeEach(inject(function(_$rootScope_, _$timeout_, _$mdSidenav_) {
+    beforeEach(inject(function(_$rootScope_, _$timeout_) {
       $rootScope = _$rootScope_;
       $timeout = _$timeout_;
-      $mdSidenav = _$mdSidenav_;
     }));
 
-    it('should find an instantiation using `$mdSidenav(id)`', function() {
+    it('should find an instantiation using `$mdSidenav(id)`', inject(function($mdSidenav) {
       var el = setup('md-component-id="left"');
       $timeout.flush();
 
       // Lookup instance still available in the component registry
       var instance = $mdSidenav('left');
       expect(instance).toBeTruthy();
-    });
+    }));
 
-    it('should support data bindings', function() {
-      // It should work on init.
-      $rootScope.leftComponentId = 'left';
-      setup('md-component-id="{{ leftComponentId }}"', true);
-      expect($mdSidenav($rootScope.leftComponentId, false)).toBeTruthy();
-
-      // It should also work if the data binding has changed.
-      $rootScope.$apply('leftComponentId = "otherLeft"');
-      expect($mdSidenav($rootScope.leftComponentId, false)).toBeTruthy();
-    });
-
-    it('should find a deferred instantiation using `$mdSidenav(id, true)`', function() {
+    it('should find a deferred instantiation using `$mdSidenav(id, true)`', inject(function($mdSidenav) {
       var instance;
 
       // Lookup deferred (not existing) instance
@@ -455,9 +427,9 @@ describe('mdSidenav', function() {
       // Lookup instance still available in the component registry
       instance = $mdSidenav('left', true);
       expect(instance).toBeTruthy();
-    });
+    }));
 
-    it('should find a deferred instantiation using `$mdSidenav().waitFor(id)` ', function() {
+    it('should find a deferred instantiation using `$mdSidenav().waitFor(id)` ', inject(function($mdSidenav) {
       var instance;
 
       // Lookup deferred (not existing) instance
@@ -478,9 +450,9 @@ describe('mdSidenav', function() {
       instance = $mdSidenav('left');
 
       expect(instance).toBeTruthy();
-    });
+    }));
 
-    it('should not find a lazy instantiation without waiting `$mdSidenav(id)`', function() {
+    it('should not find a lazy instantiation without waiting `$mdSidenav(id)`', inject(function($mdSidenav) {
       var instance = $mdSidenav('left');
       expect(instance.isOpen).toBeDefined();    // returns legacy API with noops
 
@@ -494,9 +466,9 @@ describe('mdSidenav', function() {
       instance = $mdSidenav('left');            // returns instance
       expect(instance).toBeDefined();
       expect(instance.isOpen()).toBeFalsy();
-    });
+    }));
 
-    it('should not find a lazy instantiation without waiting `$mdSidenav().find(id)`', function() {
+    it('should not find a lazy instantiation without waiting `$mdSidenav().find(id)`', inject(function($mdSidenav) {
       var instance = $mdSidenav().find('left');
       expect(instance).toBeUndefined();
 
@@ -507,7 +479,7 @@ describe('mdSidenav', function() {
       instance = $mdSidenav().find('left');
       expect(instance).toBeDefined();
       expect(instance.isOpen()).toBeFalsy();
-    });
+    }));
 
     describe('onClose', function () {
       it('should call callback on escape', inject(function($mdSidenav, $rootScope, $material, $mdConstant, $timeout) {

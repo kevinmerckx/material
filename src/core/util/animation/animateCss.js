@@ -1,8 +1,9 @@
+"use strict";
+
 if (angular.version.minor >= 4) {
   angular.module('material.core.animate', []);
 } else {
 (function() {
-  "use strict";
 
   var forEach = angular.forEach;
 
@@ -17,7 +18,7 @@ if (angular.version.minor >= 4) {
   var $$ForceReflowFactory = ['$document', function($document) {
     return function() {
       return $document[0].body.clientWidth + 1;
-    };
+    }
   }];
 
   var $$rAFMutexFactory = ['$$rAF', function($$rAF) {
@@ -295,7 +296,7 @@ if (angular.version.minor >= 4) {
               return runner;
             }
           }
-        };
+        }
       }
 
       function applyClasses(element, options) {
@@ -311,7 +312,7 @@ if (angular.version.minor >= 4) {
 
       function computeTimings(element) {
         var node = getDomNode(element);
-        var cs = $window.getComputedStyle(node);
+        var cs = $window.getComputedStyle(node)
         var tdr = parseMaxTime(cs[prop('transitionDuration')]);
         var adr = parseMaxTime(cs[prop('animationDuration')]);
         var tdy = parseMaxTime(cs[prop('transitionDelay')]);

@@ -3,14 +3,14 @@ describe("Layout API ", function() {
   describe("can be globally disabled with 'md-layouts-disabled' ", function() {
     var disableLayouts = angular.noop,
         activateLayouts = function() {
-          var el = document.body;
+          var el = document.getElementsByTagName('body')[0];
               el.removeAttribute('md-layouts-disabled');
 
           disableLayouts(false);
         };
 
     beforeEach(function() {
-      var el = document.body;
+      var el = document.getElementsByTagName('body')[0];
           el.setAttribute('md-layouts-disabled', '');
 
       // Load the core module
