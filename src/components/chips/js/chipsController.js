@@ -8,15 +8,13 @@ angular
  * the models of various input components.
  *
  * @param $scope
- * @param $attrs
  * @param $mdConstant
  * @param $log
  * @param $element
- * @param $timeout
  * @param $mdUtil
  * @constructor
  */
-function MdChipsCtrl ($scope, $attrs, $mdConstant, $log, $element, $timeout, $mdUtil) {
+function MdChipsCtrl ($scope, $mdConstant, $log, $element, $timeout, $mdUtil) {
   /** @type {$timeout} **/
   this.$timeout = $timeout;
 
@@ -41,9 +39,6 @@ function MdChipsCtrl ($scope, $attrs, $mdConstant, $log, $element, $timeout, $md
   /** @type {angular.NgModelController} */
   this.userInputNgModelCtrl = null;
 
-  /** @type {MdAutocompleteCtrl} */
-  this.autocompleteCtrl = null;
-
   /** @type {Element} */
   this.userInputElement = null;
 
@@ -53,11 +48,11 @@ function MdChipsCtrl ($scope, $attrs, $mdConstant, $log, $element, $timeout, $md
   /** @type {number} */
   this.selectedChip = -1;
 
-  /** @type {string} */
-  this.enableChipEdit = $mdUtil.parseAttributeBoolean($attrs.mdEnableChipEdit);
+  /** @type {boolean} */
+  this.hasAutocomplete = false;
 
   /** @type {string} */
-  this.addOnBlur = $mdUtil.parseAttributeBoolean($attrs.mdAddOnBlur);
+  this.enableChipEdit = $mdUtil.parseAttributeBoolean(this.mdEnableChipEdit);
 
   /**
    * Hidden hint text for how to delete a chip. Used to give context to screen readers.
@@ -101,6 +96,7 @@ function MdChipsCtrl ($scope, $attrs, $mdConstant, $log, $element, $timeout, $md
    * after selecting a chip from the list.
    * @type {boolean}
    */
+  this.useOnSelect = false;
 }
 
 /**
@@ -113,24 +109,15 @@ MdChipsCtrl.prototype.inputKeydown = function(event) {
   var chipBuffer = this.getChipBuffer();
 
   // If we have an autocomplete, and it handled the event, we have nothing to do
-  if (this.autocompleteCtrl && event.isDefaultPrevented && event.isDefaultPrevented()) {
+  if (this.hasAutocomplete && event.isDefaultPrevented && event.isDefaultPrevented()) {
     return;
   }
 
   if (event.keyCode === this.$mdConstant.KEY_CODE.BACKSPACE) {
-    // Only select and focus the previous chip, if the current caret position of the
-    // input element is at the beginning.
-    if (this.getCursorPosition(event.target) !== 0) {
-      return;
-    }
-
+    if (chipBuffer) return;
     event.preventDefault();
     event.stopPropagation();
-
-    if (this.items.length) {
-      this.selectAndFocusChipSafe(this.items.length - 1);
-    }
-
+    if (this.items.length) this.selectAndFocusChipSafe(this.items.length - 1);
     return;
   }
 
@@ -141,7 +128,7 @@ MdChipsCtrl.prototype.inputKeydown = function(event) {
 
   // Support additional separator key codes in an array of `md-separator-keys`.
   if (this.separatorKeys.indexOf(event.keyCode) !== -1) {
-    if ((this.autocompleteCtrl && this.requireMatch) || !chipBuffer) return;
+    if ((this.hasAutocomplete && this.requireMatch) || !chipBuffer) return;
     event.preventDefault();
 
     // Only append the chip and reset the chip buffer if the max chips limit isn't reached.
@@ -149,28 +136,6 @@ MdChipsCtrl.prototype.inputKeydown = function(event) {
 
     this.appendChip(chipBuffer.trim());
     this.resetChipBuffer();
-  }
-};
-
-/**
- * Returns the cursor position of the specified input element.
- * @param element HTMLInputElement
- * @returns {Number} Cursor Position of the input.
- */
-MdChipsCtrl.prototype.getCursorPosition = function(element) {
-  /*
-   * Figure out whether the current input for the chips buffer is valid for using
-   * the selectionStart / end property to retrieve the cursor position.
-   * Some browsers do not allow the use of those attributes, on different input types.
-   */
-  try {
-    if (element.selectionStart === element.selectionEnd) {
-      return element.selectionStart;
-    }
-  } catch (e) {
-    if (!element.value) {
-      return 0;
-    }
   }
 };
 
@@ -192,20 +157,10 @@ MdChipsCtrl.prototype.updateChipContents = function(chipIndex, chipContents){
  * Returns true if a chip is currently being edited. False otherwise.
  * @return {boolean}
  */
-MdChipsCtrl.prototype.isEditingChip = function() {
+MdChipsCtrl.prototype.isEditingChip = function(){
   return !!this.$element[0].getElementsByClassName('_md-chip-editing').length;
 };
 
-
-MdChipsCtrl.prototype.isRemovable = function() {
-  // Return false if we have static chips
-  if (!this.ngModelCtrl) {
-    return false;
-  }
-
-  return this.readonly ? this.removable :
-         angular.isDefined(this.removable) ? this.removable : true;
-};
 
 /**
  * Handles the keydown event on the chip elements: backspace removes the selected chip, arrow
@@ -221,8 +176,6 @@ MdChipsCtrl.prototype.chipKeydown = function (event) {
     case this.$mdConstant.KEY_CODE.DELETE:
       if (this.selectedChip < 0) return;
       event.preventDefault();
-      // Cancel the delete action only after the event cancel. Otherwise the page will go back.
-      if (!this.isRemovable()) return;
       this.removeAndSelectAdjacentChip(this.selectedChip);
       break;
     case this.$mdConstant.KEY_CODE.LEFT_ARROW:
@@ -440,17 +393,7 @@ MdChipsCtrl.prototype.removeChip = function(index) {
 
 MdChipsCtrl.prototype.removeChipAndFocusInput = function (index) {
   this.removeChip(index);
-
-  if (this.autocompleteCtrl) {
-    // Always hide the autocomplete dropdown before focusing the autocomplete input.
-    // Wait for the input to move horizontally, because the chip was removed.
-    // This can lead to an incorrect dropdown position.
-    this.autocompleteCtrl.hidden = true;
-    this.$mdUtil.nextTick(this.onFocus.bind(this));
-  } else {
-    this.onFocus();
-  }
-
+  this.onFocus();
 };
 /**
  * Selects the chip at `index`,
@@ -501,7 +444,7 @@ MdChipsCtrl.prototype.selectAndFocusChip = function(index) {
  * Call `focus()` on the chip at `index`
  */
 MdChipsCtrl.prototype.focusChip = function(index) {
-  this.$element[0].querySelector('md-chip[index="' + index + '"] .md-chip-content').focus();
+  this.$element[0].querySelector('md-chip[index="' + index + '"] ._md-chip-content').focus();
 };
 
 /**
@@ -532,23 +475,6 @@ MdChipsCtrl.prototype.onInputFocus = function () {
 
 MdChipsCtrl.prototype.onInputBlur = function () {
   this.inputHasFocus = false;
-
-  var chipBuffer = this.getChipBuffer().trim();
-
-  // Update the custom chip validators.
-  this.validateModel();
-
-  var isModelValid = this.ngModelCtrl.$valid;
-
-  if (this.userInputNgModelCtrl) {
-    isModelValid &= this.userInputNgModelCtrl.$valid;
-  }
-
-  // Only append the chip and reset the chip buffer if the chips and input ngModel is valid.
-  if (this.addOnBlur && chipBuffer && isModelValid) {
-    this.appendChip(chipBuffer);
-    this.resetChipBuffer();
-  }
 };
 
 /**
@@ -582,8 +508,8 @@ MdChipsCtrl.prototype.configureUserInput = function(inputElement) {
 };
 
 MdChipsCtrl.prototype.configureAutocomplete = function(ctrl) {
-  if (ctrl) {
-    this.autocompleteCtrl = ctrl;
+  if ( ctrl ) {
+    this.hasAutocomplete = true;
 
     ctrl.registerSelectedItemWatcher(angular.bind(this, function (item) {
       if (item) {

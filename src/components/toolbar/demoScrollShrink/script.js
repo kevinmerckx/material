@@ -1,9 +1,10 @@
-angular.module('toolbarDemo2', ['ngMaterial'])
+var app = angular.module('toolbarDemo2', ['ngMaterial']);
 
-.controller('TitleController', function($scope) {
+app.controller('TitleController', function($scope) {
   $scope.title = 'My App Title';
-})
-.controller('AppCtrl', function($scope) {
+});
+
+app.controller('AppCtrl', function($scope) {
   var imagePath = 'img/list/60.jpeg';
 
   $scope.todos = [];

@@ -1,4 +1,4 @@
-describe('md-autofocus', function() {
+describe('_md-autofocus', function() {
   var $rootScope, pageScope, element;
 
   beforeEach(module('material.core'));
@@ -10,43 +10,43 @@ describe('md-autofocus', function() {
     it('supports true', function() {
       build('<input id="test" type="text" md-autofocus="true">');
 
-      expect(element).toHaveClass('md-autofocus');
+      expect(element).toHaveClass('_md-autofocus');
     });
 
     it('supports false', function() {
       build('<input id="test" type="text" md-autofocus="false">');
 
-      expect(element).not.toHaveClass('md-autofocus');
+      expect(element).not.toHaveClass('_md-autofocus');
     });
 
     it('supports variables', function() {
       build('<input id="test" type="text" md-autofocus="shouldAutoFocus">');
 
       // By default, we assume an undefined value for the expression is true
-      expect(element).toHaveClass('md-autofocus');
+      expect(element).toHaveClass('_md-autofocus');
 
       // Set the expression to false
       pageScope.$apply('shouldAutoFocus=false');
-      expect(element).not.toHaveClass('md-autofocus');
+      expect(element).not.toHaveClass('_md-autofocus');
 
       // Set the expression to true
       pageScope.$apply('shouldAutoFocus=true');
-      expect(element).toHaveClass('md-autofocus');
+      expect(element).toHaveClass('_md-autofocus');
     });
 
     it('supports expressions', function() {
       build('<input id="test" type="text" md-autofocus="shouldAutoFocus==1">');
 
       // By default, the expression should be false
-      expect(element).not.toHaveClass('md-autofocus');
+      expect(element).not.toHaveClass('_md-autofocus');
 
       // Make the expression false
       pageScope.$apply('shouldAutoFocus=0');
-      expect(element).not.toHaveClass('md-autofocus');
+      expect(element).not.toHaveClass('_md-autofocus');
 
       // Make the expression true
       pageScope.$apply('shouldAutoFocus=1');
-      expect(element).toHaveClass('md-autofocus');
+      expect(element).toHaveClass('_md-autofocus');
     });
   });
 

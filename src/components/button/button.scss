@@ -26,36 +26,29 @@ button.md-button::-moz-focus-inner {
 }
 
 .md-button {
-  display: inline-block;
-  position: relative; // Required for absolute canvas child elements.
-  cursor: pointer;
-
-  /** Alignment adjustments */
-  min-height: $button-line-height;
-  min-width: $button-min-width;
-  line-height: $button-line-height;
-
-  vertical-align: middle;
-  align-items: center;
-  text-align: center;
-
   border-radius: $button-border-radius;
   box-sizing: border-box;
+  color: currentColor;
 
-  /* Reset default button appearance */
   user-select: none;
+  position: relative; //for child absolute-positioned <canvas>
+
   outline: none;
   border: 0;
-
-  /** Custom styling for button */
+  display: inline-block;
+  align-items: center;
   padding: $button-padding;
   margin: $button-margin;
-
+  line-height: $button-line-height;
+  min-height: $button-line-height;
   background: transparent;
-  color: currentColor;
   white-space: nowrap;
+  // override for FAB, icon buttons, etc.
+  min-width: $button-min-width;
 
-  /* Uppercase text content */
+  text-align: center;
+
+  // Always uppercase buttons
   text-transform: uppercase;
   font-weight: 500;
   font-size: $body-font-size-base;
@@ -64,8 +57,8 @@ button.md-button::-moz-focus-inner {
   font-family: inherit;
   text-decoration: none;
 
-  // Ink Ripple should not create any overflow.
-  overflow: hidden;
+  cursor: pointer;
+  overflow: hidden;   // for ink containment
 
   transition: box-shadow $swift-ease-out-duration $swift-ease-out-timing-function,
               background-color $swift-ease-out-duration $swift-ease-out-timing-function;
@@ -187,7 +180,7 @@ button.md-button.md-fab {
   }
 }
 
-.md-toast-open-top {
+._md-toast-open-top {
   .md-button.md-fab-top-left,
   .md-button.md-fab-top-right {
     transition: $swift-ease-out;
@@ -201,7 +194,7 @@ button.md-button.md-fab {
   }
 }
 
-.md-toast-open-bottom {
+._md-toast-open-bottom {
   .md-button.md-fab-bottom-left,
   .md-button.md-fab-bottom-right {
     transition: $swift-ease-out;

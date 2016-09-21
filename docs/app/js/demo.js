@@ -1,4 +1,4 @@
-angular.module('docsApp')
+DocsApp
 .directive('layoutAlign', function() { return angular.noop; })
 .directive('layout', function() { return angular.noop; })
 .directive('docsDemo', ['$mdUtil', function($mdUtil) {

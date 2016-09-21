@@ -426,11 +426,7 @@ function InterimElementProvider() {
          * Use optional autoHided and transition-in effects
          */
         function createAndTransitionIn() {
-          return $q(function(resolve, reject) {
-
-            // Trigger onCompiling callback before the compilation starts.
-            // This is useful, when modifying options, which can be influenced by developers.
-            options.onCompiling && options.onCompiling(options);
+          return $q(function(resolve, reject){
 
             compileElement(options)
               .then(function( compiledData ) {

@@ -37,10 +37,10 @@ function MdHighlight ($interpolate, $parse) {
     controller: 'MdHighlightCtrl',
     compile: function mdHighlightCompile(tElement, tAttr) {
       var termExpr = $parse(tAttr.mdHighlightText);
-      var unsafeContentExpr = $interpolate(tElement.html());
+      var unsafeTextExpr = $interpolate(tElement.html());
 
       return function mdHighlightLink(scope, element, attr, ctrl) {
-        ctrl.init(termExpr, unsafeContentExpr);
+        ctrl.init(termExpr, unsafeTextExpr);
       };
     }
   };

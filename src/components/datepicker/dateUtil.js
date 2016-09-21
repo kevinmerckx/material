@@ -28,8 +28,7 @@
       incrementYears: incrementYears,
       getYearDistance: getYearDistance,
       clampDate: clampDate,
-      getTimestampFromNode: getTimestampFromNode,
-      isMonthWithinRange: isMonthWithinRange
+      getTimestampFromNode: getTimestampFromNode
     };
 
     /**
@@ -293,19 +292,5 @@
        }
      }
 
-     /**
-      * Checks if a month is within a min and max range, ignoring the date and time components.
-      * If minDate or maxDate are not dates, they are ignored.
-      * @param {Date} date
-      * @param {Date} minDate
-      * @param {Date} maxDate
-      */
-     function isMonthWithinRange(date, minDate, maxDate) {
-       var month = date.getMonth();
-       var year = date.getFullYear();
-
-       return (!minDate || minDate.getFullYear() < year || minDate.getMonth() <= month) &&
-        (!maxDate || maxDate.getFullYear() > year || maxDate.getMonth() >= month);
-     }
   });
 })();

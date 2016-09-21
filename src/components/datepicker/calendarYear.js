@@ -43,7 +43,7 @@
    * Controller for the mdCalendar component.
    * @ngInject @constructor
    */
-  function CalendarYearCtrl($element, $scope, $animate, $q, $$mdDateUtil) {
+  function CalendarYearCtrl($element, $scope, $animate, $q, $$mdDateUtil, $timeout) {
 
     /** @final {!angular.JQLite} */
     this.$element = $element;
@@ -60,8 +60,14 @@
     /** @final */
     this.dateUtil = $$mdDateUtil;
 
+    /** @final */
+    this.$timeout = $timeout;
+
     /** @final {HTMLElement} */
     this.calendarScroller = $element[0].querySelector('.md-virtual-repeat-scroller');
+
+    /** @type {Date} */
+    this.firstRenderableDate = null;
 
     /** @type {boolean} */
     this.isInitialized = false;
@@ -86,20 +92,40 @@
    * setting up the object that will be iterated by the virtual repeater.
    */
   CalendarYearCtrl.prototype.initialize = function(calendarCtrl) {
+    var minDate = calendarCtrl.minDate;
+    var maxDate = calendarCtrl.maxDate;
+    this.calendarCtrl = calendarCtrl;
+
     /**
      * Dummy array-like object for virtual-repeat to iterate over. The length is the total
-     * number of years that can be viewed. We add 1 extra in order to include the current year.
+     * number of months that can be viewed. This is shorter than ideal because of (potential)
+     * Firefox bug https://bugzilla.mozilla.org/show_bug.cgi?id=1181658.
      */
-    this.items = {
-      length: this.dateUtil.getYearDistance(
-        calendarCtrl.firstRenderableDate,
-        calendarCtrl.lastRenderableDate
-      ) + 1
-    };
+    this.items = { length: 400 };
 
-    this.calendarCtrl = calendarCtrl;
+    if (maxDate && minDate) {
+      // Limit the number of years if min and max dates are set.
+      var numYears = this.dateUtil.getYearDistance(minDate, maxDate) + 1;
+      this.items.length = Math.max(numYears, 1);
+    }
+
+    this.firstRenderableDate = this.dateUtil.incrementYears(calendarCtrl.today, - (this.items.length / 2));
+
+    if (minDate && minDate > this.firstRenderableDate) {
+      this.firstRenderableDate = minDate;
+    } else if (maxDate) {
+      // Calculate the year difference between the start date and max date.
+      // Subtract 1 because it's an inclusive difference.
+      this.firstRenderableDate = this.dateUtil.incrementMonths(maxDate, - (this.items.length - 1));
+    }
+
+    // Trigger an extra digest to ensure that the virtual repeater has updated. This
+    // is necessary, because the virtual repeater doesn't update the $index the first
+    // time around since the content isn't in place yet. The case, in which this is an
+    // issues, is when the repeater has less than a page of content (e.g. there's a min
+    // and max date).
+    if (minDate || maxDate) this.$timeout();
     this.attachScopeListeners();
-    calendarCtrl.updateVirtualRepeat();
 
     // Fire the initial render, since we might have missed it the first time it fired.
     calendarCtrl.ngModelCtrl && calendarCtrl.ngModelCtrl.$render();
@@ -111,11 +137,8 @@
    */
   CalendarYearCtrl.prototype.getFocusedYearIndex = function() {
     var calendarCtrl = this.calendarCtrl;
-
-    return this.dateUtil.getYearDistance(
-      calendarCtrl.firstRenderableDate,
-      calendarCtrl.displayDate || calendarCtrl.selectedDate || calendarCtrl.today
-    );
+    return this.dateUtil.getYearDistance(this.firstRenderableDate,
+      calendarCtrl.displayDate || calendarCtrl.selectedDate || calendarCtrl.today);
   };
 
   /**
@@ -149,7 +172,7 @@
    */
   CalendarYearCtrl.prototype.animateDateChange = function(date) {
     if (this.dateUtil.isValidDate(date)) {
-      var monthDistance = this.dateUtil.getYearDistance(this.calendarCtrl.firstRenderableDate, date);
+      var monthDistance = this.dateUtil.getYearDistance(this.firstRenderableDate, date);
       this.calendarScroller.scrollTop = monthDistance * TBODY_HEIGHT;
     }
 
@@ -183,7 +206,7 @@
       }
 
       if (date) {
-        var min = calendarCtrl.minDate ? dateUtil.getFirstDateOfMonth(calendarCtrl.minDate) : null;
+        var min = calendarCtrl.minDate ? dateUtil.incrementMonths(dateUtil.getFirstDateOfMonth(calendarCtrl.minDate), 1) : null;
         var max = calendarCtrl.maxDate ? dateUtil.getFirstDateOfMonth(calendarCtrl.maxDate) : null;
         date = dateUtil.getFirstDateOfMonth(this.dateUtil.clampDate(date, min, max));
 

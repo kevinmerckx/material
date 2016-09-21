@@ -1,10 +1,6 @@
-var Server = require('karma').Server;
+var karma = require('karma').server;
 var ROOT = require('../const').ROOT;
 
 exports.task = function(done) {
-  var srv = new Server({
-    logLevel: 'warn',
-    configFile: ROOT + '/config/karma-sauce.conf.js'
-  }, done);
-  srv.start();
+  karma.start(require(ROOT + '/config/karma-sauce.conf.js'), done);
 };

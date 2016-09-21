@@ -52,7 +52,7 @@ describe('<md-tooltip> directive', function() {
         '</md-button>'
       );
 
-      expect(element.text()).toBe("Hello");
+      expect(element.attr('aria-label')).toBe("Hello");
   });
 
   it('should label parent', function(){
@@ -158,7 +158,7 @@ describe('<md-tooltip> directive', function() {
       showTooltip(true);
 
       expect(findTooltip().length).toBe(1);
-      expect(findTooltip().hasClass('md-show')).toBe(true);
+      expect(findTooltip().hasClass('_md-show')).toBe(true);
 
       showTooltip(false);
 
@@ -181,25 +181,6 @@ describe('<md-tooltip> directive', function() {
         triggerEvent('mouseleave');
         expect($rootScope.testModel.isVisible).toBe(false);
     });
-
-    it('should should toggle visibility on the next touch', inject(function($document) {
-        buildTooltip(
-          '<md-button>' +
-             'Hello' +
-             '<md-tooltip md-visible="testModel.isVisible">' +
-              'Tooltip' +
-            '</md-tooltip>' +
-          '</md-button>'
-        );
-
-        triggerEvent('touchstart');
-        expect($rootScope.testModel.isVisible).toBe(true);
-        triggerEvent('touchend');
-
-        $document.triggerHandler('touchend');
-        $timeout.flush();
-        expect($rootScope.testModel.isVisible).toBe(false);
-    }));
 
     it('should cancel when mouseleave was before the delay', function() {
       buildTooltip(
@@ -248,7 +229,7 @@ describe('<md-tooltip> directive', function() {
       showTooltip(true);
 
       expect(findTooltip().length).toBe(1);
-      expect(findTooltip().hasClass('md-show')).toBe(true);
+      expect(findTooltip().hasClass('_md-show')).toBe(true);
     });
 
     it('should set visible on focus and blur', function() {

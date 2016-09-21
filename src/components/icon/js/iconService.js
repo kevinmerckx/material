@@ -6,8 +6,7 @@
         'mdCancel':      'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHg9IjBweCIgeT0iMHB4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxnPjxwYXRoIGQ9Ik0xMiAyYy01LjUzIDAtMTAgNC40Ny0xMCAxMHM0LjQ3IDEwIDEwIDEwIDEwLTQuNDcgMTAtMTAtNC40Ny0xMC0xMC0xMHptNSAxMy41OWwtMS40MSAxLjQxLTMuNTktMy41OS0zLjU5IDMuNTktMS40MS0xLjQxIDMuNTktMy41OS0zLjU5LTMuNTkgMS40MS0xLjQxIDMuNTkgMy41OSAzLjU5LTMuNTkgMS40MSAxLjQxLTMuNTkgMy41OSAzLjU5IDMuNTl6Ii8+PC9nPjwvc3ZnPg==',
         'mdMenu':        'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHg9IjBweCIgeT0iMHB4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGQ9Ik0zLDZIMjFWOEgzVjZNMywxMUgyMVYxM0gzVjExTTMsMTZIMjFWMThIM1YxNloiIC8+PC9zdmc+',
         'mdToggleArrow': 'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHg9IjBweCIgeT0iMHB4IiB2aWV3Qm94PSIwIDAgNDggNDgiPjxwYXRoIGQ9Ik0yNCAxNmwtMTIgMTIgMi44MyAyLjgzIDkuMTctOS4xNyA5LjE3IDkuMTcgMi44My0yLjgzeiIvPjxwYXRoIGQ9Ik0wIDBoNDh2NDhoLTQ4eiIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==',
-        'mdCalendar':    'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTkgM2gtMVYxaC0ydjJIOFYxSDZ2Mkg1Yy0xLjExIDAtMS45OS45LTEuOTkgMkwzIDE5YzAgMS4xLjg5IDIgMiAyaDE0YzEuMSAwIDItLjkgMi0yVjVjMC0xLjEtLjktMi0yLTJ6bTAgMTZINVY4aDE0djExek03IDEwaDV2NUg3eiIvPjwvc3ZnPg==',
-        'mdChecked':     'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHg9IjBweCIgeT0iMHB4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxnPjxwYXRoIGQ9Ik05IDE2LjE3TDQuODMgMTJsLTEuNDIgMS40MUw5IDE5IDIxIDdsLTEuNDEtMS40MXoiLz48L2c+PC9zdmc+'
+        'mdCalendar':    'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTkgM2gtMVYxaC0ydjJIOFYxSDZ2Mkg1Yy0xLjExIDAtMS45OS45LTEuOTkgMkwzIDE5YzAgMS4xLjg5IDIgMiAyaDE0YzEuMSAwIDItLjkgMi0yVjVjMC0xLjEtLjktMi0yLTJ6bTAgMTZINVY4aDE0djExek03IDEwaDV2NUg3eiIvPjwvc3ZnPg=='
     })
     .provider('$mdIcon', MdIconProvider);
 
@@ -27,23 +26,6 @@
  * internally by the `$mdIcon` service using the `$templateRequest` service. When an SVG is
  * requested by name/ID, the `$mdIcon` service searches its registry for the associated source URL;
  * that URL is used to on-demand load and parse the SVG dynamically.
- *
- * The `$templateRequest` service expects the icons source to be loaded over trusted URLs.<br/>
- * This means, when loading icons from an external URL, you have to trust the URL in the `$sceDelegateProvider`.
- *
- * <hljs lang="js">
- *   app.config(function($sceDelegateProvider) {
- *     $sceDelegateProvider.resourceUrlWhitelist([
- *       // Adding 'self' to the whitelist, will allow requests from the current origin.
- *       'self',
- *       // Using double asterisks here, will allow all URLs to load.
- *       // We recommend to only specify the given domain you want to allow.
- *       '**'
- *     ]);
- *   });
- * </hljs>
- *
- * Read more about the [$sceDelegateProvider](https://docs.angularjs.org/api/ng/provider/$sceDelegateProvider).
  *
  * **Notice:** Most font-icons libraries do not support ligatures (for example `fontawesome`).<br/>
  *  In such cases you are not able to use the icon's ligature name - Like so:
@@ -101,7 +83,7 @@
  *
  * </hljs>
  *
- * > <b>Note:</b> The loaded SVG data is subsequently cached internally for future requests.
+ * NOTE: the loaded SVG data is subsequently cached internally for future requests.
  *
  */
 
@@ -342,7 +324,7 @@ MdIconProvider.prototype = {
     return this;
   },
 
-  $get: ['$templateRequest', '$q', '$log', '$mdUtil', '$sce', function($templateRequest, $q, $log, $mdUtil, $sce) {
+  $get: ['$templateRequest', '$q', '$log', '$templateCache', '$mdUtil', '$sce', function($templateRequest, $q, $log, $templateCache, $mdUtil, $sce) {
     return MdIconService(config, $templateRequest, $q, $log, $mdUtil, $sce);
   }]
 };
@@ -373,7 +355,7 @@ function ConfigurationItem(url, viewBoxSize) {
  *
  * @returns {angular.$q.Promise} A promise that gets resolved to a clone of the initial SVG DOM element; which was
  * created from the SVG markup in the SVG data file. If an error occurs (e.g. the icon cannot be found) the promise
- * will get rejected.
+ * will get rejected. 
  *
  * @usage
  * <hljs lang="js">
@@ -395,14 +377,13 @@ function ConfigurationItem(url, viewBoxSize) {
   * };
  * </hljs>
  *
- * > <b>Note:</b> The `<md-icon>` directive internally uses the `$mdIcon` service to query, loaded,
- *   and instantiate SVG DOM elements.
+ * NOTE: The `<md-icon />  ` directive internally uses the `$mdIcon` service to query, loaded, and instantiate
+ * SVG DOM elements.
  */
 
 /* @ngInject */
 function MdIconService(config, $templateRequest, $q, $log, $mdUtil, $sce) {
   var iconCache = {};
-  var svgCache = {};
   var urlRegex = /[-\w@:%\+.~#?&//=]{2,}\.[a-z]{2,4}\b(\/[-\w@:%\+.~#?&//=]*)?/i;
   var dataUrlRegex = /^data:image\/svg\+xml[\s*;\w\-\=]*?(base64)?,(.*)$/i;
 
@@ -514,7 +495,7 @@ function MdIconService(config, $templateRequest, $q, $log, $mdUtil, $sce) {
     function extractFromSet(set) {
       var iconName = id.slice(id.lastIndexOf(':') + 1);
       var icon = set.querySelector('#' + iconName);
-      return icon ? new Icon(icon, iconSetConfig) : announceIdNotFound(id);
+      return !icon ? announceIdNotFound(id) : new Icon(icon, iconSetConfig);
     }
 
     function announceIdNotFound(id) {
@@ -549,10 +530,8 @@ function MdIconService(config, $templateRequest, $q, $log, $mdUtil, $sce) {
             reject(err);
           },
           extractSvg = function(response) {
-            if (!svgCache[url]) {
-              svgCache[url] = angular.element('<div>').append(response)[0].querySelector('svg');
-            }
-            resolve(svgCache[url]);
+            var svg = angular.element('<div>').append(response).find('svg')[0];
+            resolve(svg);
           };
 
         $templateRequest(url, true).then(extractSvg, announceAndReject);
@@ -576,7 +555,7 @@ function MdIconService(config, $templateRequest, $q, $log, $mdUtil, $sce) {
    */
   function Icon(el, config) {
     if (el && el.tagName != 'svg') {
-      el = angular.element('<svg xmlns="http://www.w3.org/2000/svg">').append(el.cloneNode(true))[0];
+      el = angular.element('<svg xmlns="http://www.w3.org/2000/svg">').append(el)[0];
     }
 
     // Inject the namespace if not available...
