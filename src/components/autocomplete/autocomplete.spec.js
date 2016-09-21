@@ -374,6 +374,31 @@ describe('<md-autocomplete>', function() {
       element.remove();
     }));
 
+    it('should support ng-trim for the search input', inject(function() {
+      var scope = createScope(null, {inputId: 'custom-input-id'});
+      var template =
+        '<md-autocomplete ' +
+            'md-selected-item="selectedItem" ' +
+            'md-search-text="searchText" ' +
+            'md-items="item in match(searchText)" ' +
+            'md-item-text="item.display" ' +
+            'ng-trim="false" ' +
+            'placeholder="placeholder">' +
+          '<span md-highlight-text="searchText">{{item.display}}</span>' +
+        '</md-autocomplete>';
+
+      var element = compile(template, scope);
+      var input = element.find('input');
+
+      expect(input.attr('ng-trim')).toBe("false");
+
+      scope.$apply('searchText = "      Text    "');
+
+      expect(scope.searchText).not.toBe('Text');
+
+      element.remove();
+    }));
+
     it('forwards the tabindex to the input', inject(function() {
       var scope = createScope(null, {inputId: 'custom-input-id'});
       var template =
@@ -889,7 +914,7 @@ describe('<md-autocomplete>', function() {
     }));
 
     it('removes the md-scroll-mask on cleanup', inject(function($mdUtil, $timeout, $material) {
-      spyOn($mdUtil, 'enableScrolling');
+      spyOn($mdUtil, 'enableScrolling').and.callThrough();
 
       var scope = createScope();
       var template =
@@ -932,7 +957,7 @@ describe('<md-autocomplete>', function() {
     }));
 
     it('removes the md-scroll-mask when md-autocomplete removed on change', inject(function($mdUtil, $timeout, $material) {
-      spyOn($mdUtil, 'enableScrolling');
+      spyOn($mdUtil, 'enableScrolling').and.callThrough();
 
       var scope = createScope();
       var template =
@@ -1609,7 +1634,10 @@ describe('<md-autocomplete>', function() {
       var element = compile(template, scope);
       var ctrl = element.find('md-autocomplete').controller('mdAutocomplete');
 
-      element.scope().searchText = 'fo';
+      // Flush the element gathering.
+      $timeout.flush();
+
+      scope.$apply('searchText = "fo"');
       $timeout.flush();
 
       ctrl.select(0);
@@ -1622,14 +1650,48 @@ describe('<md-autocomplete>', function() {
 
       expect(scope.form.autocomplete.$error['md-require-match']).toBeFalsy();
 
-      ctrl.clear();
+      scope.$apply('searchText = "food"');
+      $timeout.flush();
 
-      scope.$apply();
-
-      expect(scope.searchText).toBe('');
-      expect(scope.selectedItem).toBe(null);
+      expect(scope.searchText).toBe('food');
+      expect(scope.selectedItem).toBeNull();
       expect(scope.form.autocomplete.$error['md-require-match']).toBeTruthy();
 
+    }));
+
+    it('should not set to invalid if searchText is empty', inject(function($timeout) {
+      var scope = createScope();
+      var template = '\
+          <form name="form">\
+            <md-autocomplete\
+                md-input-name="autocomplete"\
+                md-selected-item="selectedItem"\
+                md-search-text="searchText"\
+                md-items="item in match(searchText)"\
+                md-item-text="item.display"\
+                placeholder="placeholder"\
+                md-require-match="true">\
+              <span md-highlight-text="searchText">{{item.display}}</span>\
+            </md-autocomplete>\
+          </form>';
+
+      compile(template, scope);
+
+      // Flush the element gathering.
+      $timeout.flush();
+
+      scope.$apply('searchText = "food"');
+      $timeout.flush();
+
+      expect(scope.searchText).toBe('food');
+      expect(scope.selectedItem).toBeNull();
+      expect(scope.form.autocomplete.$error['md-require-match']).toBeTruthy();
+
+      scope.$apply('searchText = ""');
+
+      expect(scope.searchText).toBe('');
+      expect(scope.selectedItem).toBeNull();
+      expect(scope.form.autocomplete.$error['md-require-match']).toBeFalsy();
     }));
 
   });
@@ -1735,6 +1797,26 @@ describe('<md-autocomplete>', function() {
   });
 
   describe('dropdown position', function() {
+
+    var DEFAULT_MAX_ITEMS = 5;
+    var DEFAULT_ITEM_HEIGHT = 48;
+
+    var dropdownItems = DEFAULT_MAX_ITEMS;
+
+    /**
+     * Function to create fake matches with the given dropdown items.
+     * Useful when running tests against the dropdown max items calculations.
+     * @returns {Array} Fake matches.
+     */
+    function fakeItemMatch() {
+       var matches = [];
+
+      for (var i = 0; i < dropdownItems; i++) {
+        matches.push('Item ' + i);
+      }
+
+      return matches;
+    }
 
     it('should adjust the width when the window resizes', inject(function($timeout, $window) {
       var scope = createScope();
@@ -1932,6 +2014,104 @@ describe('<md-autocomplete>', function() {
 
       // Expect the dropdown to not show up, because the min-length is not met.
       expect(scrollContainer.offsetParent).toBeTruthy();
+
+      document.body.removeChild(parent[0]);
+    }));
+
+    it('should calculate the height from the default max items', inject(function($timeout) {
+      var scope = createScope();
+
+      scope.match = fakeItemMatch;
+
+      var template =
+        '<div>' +
+          '<md-autocomplete ' +
+              'md-search-text="searchText" ' +
+              'md-items="item in match(searchText)" ' +
+              'md-item-text="item" ' +
+              'md-min-length="0" ' +
+              'placeholder="placeholder">' +
+            '<span md-highlight-text="searchText">{{item}}</span>' +
+          '</md-autocomplete>' +
+        '</div>';
+
+      var parent = compile(template, scope);
+      var element = parent.find('md-autocomplete');
+      var ctrl = element.controller('mdAutocomplete');
+
+      // Add container to the DOM to be able to test the rect calculations.
+      document.body.appendChild(parent[0]);
+
+      $timeout.flush();
+
+      // Focus the autocomplete and trigger a query to be able to open the dropdown.
+      ctrl.focus();
+      scope.$apply('searchText = "Query 1"');
+      waitForVirtualRepeat(element);
+
+      var scrollContainer = document.body.querySelector('.md-virtual-repeat-container');
+
+      expect(scrollContainer).toBeTruthy();
+      expect(scrollContainer.style.maxHeight).toBe(DEFAULT_MAX_ITEMS * DEFAULT_ITEM_HEIGHT + 'px');
+
+      dropdownItems = 6;
+
+      // Trigger a new query to request an update of the items and dropdown.
+      scope.$apply('searchText = "Query 2"');
+
+      // The dropdown should not increase its height because of the new extra item.
+      expect(scrollContainer.style.maxHeight).toBe(DEFAULT_MAX_ITEMS * DEFAULT_ITEM_HEIGHT + 'px');
+
+      document.body.removeChild(parent[0]);
+    }));
+
+    it('should calculate its height from the specified max items', inject(function($timeout) {
+      var scope = createScope();
+      var maxDropdownItems = 2;
+
+      // Set the current dropdown items to the new maximum.
+      dropdownItems = maxDropdownItems;
+      scope.match = fakeItemMatch;
+
+      var template =
+        '<div>' +
+            '<md-autocomplete ' +
+            'md-search-text="searchText" ' +
+            'md-items="item in match(searchText)" ' +
+            'md-item-text="item" ' +
+            'md-min-length="0" ' +
+            'md-dropdown-items="' + maxDropdownItems +'"' +
+            'placeholder="placeholder">' +
+          '<span md-highlight-text="searchText">{{item}}</span>' +
+        '</md-autocomplete>' +
+        '</div>';
+
+      var parent = compile(template, scope);
+      var element = parent.find('md-autocomplete');
+      var ctrl = element.controller('mdAutocomplete');
+
+      // Add container to the DOM to be able to test the rect calculations.
+      document.body.appendChild(parent[0]);
+
+      $timeout.flush();
+
+      // Focus the autocomplete and trigger a query to be able to open the dropdown.
+      ctrl.focus();
+      scope.$apply('searchText = "Query 1"');
+      waitForVirtualRepeat(element);
+
+      var scrollContainer = document.body.querySelector('.md-virtual-repeat-container');
+
+      expect(scrollContainer).toBeTruthy();
+      expect(scrollContainer.style.maxHeight).toBe(maxDropdownItems * DEFAULT_ITEM_HEIGHT + 'px');
+
+      dropdownItems = 6;
+
+      // Trigger a new query to request an update of the items and dropdown.
+      scope.$apply('searchText = "Query 2"');
+
+      // The dropdown should not increase its height because of the new extra item.
+      expect(scrollContainer.style.maxHeight).toBe(maxDropdownItems * DEFAULT_ITEM_HEIGHT + 'px');
 
       document.body.removeChild(parent[0]);
     }));
