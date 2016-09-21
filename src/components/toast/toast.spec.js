@@ -26,7 +26,7 @@ describe('$mdToast service', function() {
 
   describe('simple()', function() {
 
-    hasConfigMethods(['content', 'action', 'capsule', 'highlightAction', 'theme', 'toastClass']);
+    hasConfigMethods(['content', 'action', 'capsule', 'highlightAction', 'theme']);
 
     it('should have `._md` class indicator', inject(function($mdToast, $material) {
       var parent = angular.element('<div>');
@@ -119,19 +119,6 @@ describe('$mdToast service', function() {
       expect(button.text().trim()).toBe('UNDO');
       expect(button).toHaveClass('md-highlight');
       expect(button).toHaveClass('md-warn');
-    }));
-
-    it('adds the specified class to md-toast when using toastClass', inject(function($mdToast, $material) {
-      var parent = angular.element('<div>');
-
-      $mdToast.show(
-        $mdToast.simple()
-          .parent(parent)
-          .toastClass('test')
-      );
-      $material.flushOutstandingAnimations();
-
-      expect(parent.find('md-toast').hasClass('test')).toBe(true);
     }));
 
     describe('when using custom interpolation symbols', function() {
@@ -243,8 +230,8 @@ describe('$mdToast service', function() {
         });
         var toast = $rootElement.find('md-toast');
         $timeout.flush();
-        expect(toast.hasClass('md-top')).toBe(true);
-        expect(toast.hasClass('md-left')).toBe(true);
+        expect(toast.hasClass('_md-top')).toBe(true);
+        expect(toast.hasClass('_md-left')).toBe(true);
       }));
 
       it('should wrap toast content with .md-toast-content', inject(function($rootElement, $timeout) {
@@ -280,7 +267,7 @@ describe('$mdToast service', function() {
           setup({
             template: '<md-toast>'
           });
-          expect($rootElement.hasClass('md-toast-open-bottom')).toBe(true);
+          expect($rootElement.hasClass('_md-toast-open-bottom')).toBe(true);
 
           $material.flushInterimElement();
 
@@ -288,7 +275,7 @@ describe('$mdToast service', function() {
             template: '<md-toast>',
             position: 'top'
           });
-          expect($rootElement.hasClass('md-toast-open-bottom')).toBe(true);
+          expect($rootElement.hasClass('_md-toast-open-bottom')).toBe(true);
         }));
       });
     });
@@ -438,7 +425,7 @@ describe('$mdToast service', function() {
       setup({
         template: '<md-toast>'
       });
-      expect($rootElement.hasClass('md-toast-open-bottom')).toBe(true);
+      expect($rootElement.hasClass('_md-toast-open-bottom')).toBe(true);
 
       $material.flushInterimElement();
 
@@ -446,7 +433,7 @@ describe('$mdToast service', function() {
         template: '<md-toast>',
         position: 'top'
       });
-      expect($rootElement.hasClass('md-toast-open-top')).toBe(true);
+      expect($rootElement.hasClass('_md-toast-open-top')).toBe(true);
     }));
   });
 

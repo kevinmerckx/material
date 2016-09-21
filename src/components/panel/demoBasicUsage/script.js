@@ -1,6 +1,3 @@
-(function() {
-'use strict';
-
 angular.module('panelDemo', ['ngMaterial'])
     .controller('BasicDemoCtrl', BasicDemoCtrl)
     .controller('PanelDialogCtrl', PanelDialogCtrl);
@@ -128,20 +125,20 @@ PanelMenuCtrl.prototype.selectDessert = function(dessert) {
 
 
 PanelMenuCtrl.prototype.onKeydown = function($event, dessert) {
-  var handled, els, index, prevIndex, nextIndex;
+  var handled;
   switch ($event.which) {
     case 38: // Up Arrow.
-      els = document.querySelectorAll('.demo-menu-item');
-      index = indexOf(els, document.activeElement);
-      prevIndex = (index + els.length - 1) % els.length;
+      var els = document.querySelectorAll('.demo-menu-item');
+      var index = indexOf(els, document.activeElement);
+      var prevIndex = (index + els.length - 1) % els.length;
       els[prevIndex].focus();
       handled = true;
       break;
 
     case 40: // Down Arrow.
-      els = document.querySelectorAll('.demo-menu-item');
-      index = indexOf(els, document.activeElement);
-      nextIndex = (index + 1) % els.length;
+      var els = document.querySelectorAll('.demo-menu-item');
+      var index = indexOf(els, document.activeElement);
+      var nextIndex = (index + 1) % els.length;
       els[nextIndex].focus();
       handled = true;
       break;
@@ -170,5 +167,3 @@ PanelMenuCtrl.prototype.onKeydown = function($event, dessert) {
     return -1;
   }
 };
-
-})();

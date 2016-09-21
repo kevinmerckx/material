@@ -51,10 +51,8 @@ md-list {
   &.md-dense {
     md-list-item {
       &,
-      .md-list-item-inner {
+      ._md-list-item-inner {
         min-height: $list-item-dense-height;
-        @include ie11-min-height-flexbug($list-item-dense-height);
-
 
         // Layout for controls in primary or secondary divs, or auto-infered first child
 
@@ -64,10 +62,10 @@ md-list {
         }
 
         > md-icon:first-child:not(.md-avatar-icon) {
-          @include rtl-prop(margin-right, margin-left, $list-item-primary-width - $list-item-dense-primary-icon-width, auto);
+          @include rtl-prop(margin-right, margin-left, $list-item-primary-width - $list-item-dense-primary-icon-width);
         }
         .md-avatar, .md-avatar-icon {
-          @include rtl-prop(margin-right, margin-left, $list-item-primary-width - $list-item-dense-primary-avatar-width, auto);
+          @include rtl-prop(margin-right, margin-left, $list-item-primary-width - $list-item-dense-primary-avatar-width);
         }
         .md-avatar {
           flex: none;
@@ -78,10 +76,10 @@ md-list {
 
       &.md-2-line,
       &.md-3-line {
-        &, & > .md-no-style {
+        &, & > ._md-no-style {
           .md-list-item-text {
             &.md-offset {
-              @include rtl-prop(margin-left, margin-right, $list-item-primary-width, auto);
+              @include rtl-prop(margin-left, margin-right, $list-item-primary-width);
             }
 
             h3,
@@ -99,9 +97,12 @@ md-list {
       }
 
       &.md-2-line {
-        &, & > .md-no-style {
+        &, & > ._md-no-style {
           min-height: $list-item-dense-two-line-height;
-          @include ie11-min-height-flexbug($list-item-dense-two-line-height);
+
+          div.md-button:first-child {
+            @include ie11-min-height-flexbug($list-item-dense-two-line-height);
+          }
 
           > .md-avatar, .md-avatar-icon {
             margin-top: $baseline-grid * 1.5;
@@ -110,10 +111,12 @@ md-list {
       }
 
       &.md-3-line {
-        &, & > .md-no-style {
-
+        &, & > ._md-no-style {
           min-height: $list-item-dense-three-line-height;
-          @include ie11-min-height-flexbug($list-item-dense-three-line-height);
+
+          div.md-button:first-child {
+            @include ie11-min-height-flexbug($list-item-dense-three-line-height);
+          }
 
           > md-icon:first-child,
           > .md-avatar {
@@ -129,7 +132,7 @@ md-list-item {
   // Ensure nested dividers are properly positioned
   position: relative;
 
-  &.md-proxy-focus.md-focused .md-no-style {
+  &._md-proxy-focus.md-focused ._md-no-style {
     transition: background-color 0.15s linear;
   }
 
@@ -137,13 +140,16 @@ md-list-item {
     position: relative;
 
     > div.md-button:first-child {
-      // Layout - Vertically align the item content.
+      // Vertically align the item content.
       display: flex;
       align-items: center;
       justify-content: flex-start;
 
       padding: 0 16px;
       margin: 0;
+
+      // The button should not inherit the parents background color.
+      background-color: initial;
 
       font-weight: 400;
       @include rtl(text-align, left, right);
@@ -160,22 +166,20 @@ md-list-item {
         padding: 0;
       }
 
-      .md-list-item-inner {
+      ._md-list-item-inner {
         // The list item content should fill the complete width.
         width: 100%;
-        min-height: inherit;
+        height: 100%;
       }
 
     }
 
   }
 
-  &.md-no-proxy,
-  .md-no-style {
+  &._md-no-proxy,
+  ._md-no-style {
     position: relative;
     padding: $list-item-padding-vertical $list-item-padding-horizontal;
-
-    // Layout [flex='auto']
     flex: 1 1 auto;
 
     &.md-button {
@@ -205,26 +209,21 @@ md-list-item {
   md-divider {
     position: absolute;
     bottom: 0;
-    @include rtl-prop(left, right, 0, auto);
+    @include rtl-prop(left, right, 0);
     width: 100%;
     &[md-inset] {
-      @include rtl-prop(left, right, $list-item-inset-divider-offset, auto);
+      @include rtl-prop(left, right, $list-item-inset-divider-offset);
       width: calc(100% - #{$list-item-inset-divider-offset});
       margin: 0 !important;
     }
   }
 
   &,
-  .md-list-item-inner {
-
-    // Layout [flex layout-align='start center']
+  ._md-list-item-inner {
     display: flex;
     justify-content: flex-start;
     align-items: center;
-
     min-height: $list-item-height;
-    @include ie11-min-height-flexbug($list-item-height);
-
     height: auto;
 
     // Layout for controls in primary or secondary divs, or auto-infered first child
@@ -248,13 +247,13 @@ md-list-item {
     }
 
     & > md-icon:first-child:not(.md-avatar-icon) {
-      @include rtl-prop(margin-right, margin-left, $list-item-primary-width - $list-item-primary-icon-width, auto);
+      @include rtl-prop(margin-right, margin-left, $list-item-primary-width - $list-item-primary-icon-width);
     }
 
     & .md-avatar, .md-avatar-icon {
       margin-top: $baseline-grid;
       margin-bottom: $baseline-grid;
-      @include rtl-prop(margin-right, margin-left, $list-item-primary-width - $list-item-primary-avatar-width, auto);
+      @include rtl-prop(margin-right, margin-left, $list-item-primary-width - $list-item-primary-avatar-width);
       border-radius: 50%;
       box-sizing: content-box;
     }
@@ -281,19 +280,17 @@ md-list-item {
       margin-top: 16px;
     }
 
-    .md-secondary-container {
+    ._md-secondary-container {
       display: flex;
       align-items: center;
 
-      // Per W3C: https://www.w3.org/TR/css-flexbox/#flex-common
-      // By default, flex items won’t shrink below their minimum content size.
-      // Safari doesn't follow that specification due to a bug and expects the developer to
-      // explicitly disable flex shrinking.
-      flex-shrink: 0;
-
+      // The secondary container is now static and needs to be aligned at the end of its parent.
+      // - Using an absolute position will cause much issues with the overflow.
+      // - Using a flex-filler, which pushes the container to the end of the parent is working
+      //   but breaks the users list-item layout.
       // Using margin auto to move them to the end of the list item is more elegant, because it has
-      // a lower priority than a flex filler and isn't introducing any overflow issues.
-      // The margin on the top is important to align multiple secondary items vertically.
+      // a lower priority than the flex filler and isn't introducing overflow issues again.
+      // The margin on the top is also important to align multiple secondary items vertical correctly.
       margin: auto;
 
       @include rtl(margin-right, 0, auto);
@@ -302,7 +299,7 @@ md-list-item {
       .md-button, .md-icon-button {
         &:last-of-type {
           // Reset 6px margin for the button.
-          @include rtl-prop(margin-right, margin-left, 0, auto);
+          @include rtl-prop(margin-right, margin-left, 0px);
         }
       }
 
@@ -312,7 +309,7 @@ md-list-item {
 
         &:last-child {
           width: 3 * $baseline-grid;
-          @include rtl-prop(margin-right, margin-left, 0, auto);
+          @include rtl-prop(margin-right, margin-left, 0);
         }
       }
 
@@ -320,11 +317,11 @@ md-list-item {
         margin-top: 0;
         margin-bottom: 0;
 
-        @include rtl-prop(margin-right, margin-left, -6px, auto);
+        @include rtl-prop(margin-right, margin-left, -6px);
       }
     }
 
-    & > p, & > .md-list-item-inner > p {
+    & > p, & > ._md-list-item-inner > p {
       flex: 1 1 auto;
       margin: 0;
     }
@@ -332,7 +329,7 @@ md-list-item {
 
   &.md-2-line,
   &.md-3-line {
-    &, & > .md-no-style {
+    &, & > ._md-no-style {
       align-items: flex-start;
       justify-content: center;
 
@@ -348,7 +345,7 @@ md-list-item {
         overflow: hidden;
 
         &.md-offset {
-          @include rtl-prop(margin-left, margin-right, $list-item-primary-width, auto);
+          @include rtl-prop(margin-left, margin-right, $list-item-primary-width);
         }
 
         h3 {
@@ -383,11 +380,13 @@ md-list-item {
   }
 
   &.md-2-line {
-    &, & > .md-no-style {
+    &, & > ._md-no-style {
       height: auto;
-
       min-height: $list-item-two-line-height;
-      @include ie11-min-height-flexbug($list-item-two-line-height);
+
+      div.md-button:first-child {
+        @include ie11-min-height-flexbug($list-item-two-line-height);
+      }
 
       > .md-avatar, .md-avatar-icon {
         margin-top: $baseline-grid * 1.5;
@@ -404,11 +403,13 @@ md-list-item {
   }
 
   &.md-3-line {
-    &, & > .md-no-style {
+    &, & > ._md-no-style {
       height: auto;
-
       min-height: $list-item-three-line-height;
-      @include ie11-min-height-flexbug($list-item-three-line-height);
+
+      div.md-button:first-child {
+        @include ie11-min-height-flexbug($list-item-three-line-height);
+      }
 
       > md-icon:first-child,
       > .md-avatar {

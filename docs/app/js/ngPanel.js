@@ -2,7 +2,8 @@
  * ngPanel by @matsko
  * https://github.com/matsko/ng-panel
  */
-angular.module('docsApp')
+DocsApp
+
   .directive('ngPanel', ['$animate', function($animate) {
     return {
       restrict: 'EA',

@@ -1,1 +1,1 @@
-angular.module('docsApp').constant('BUILDCONFIG', {$ doc.buildConfig | json $});
+DocsApp.constant('BUILDCONFIG', {$ doc.buildConfig | json $});

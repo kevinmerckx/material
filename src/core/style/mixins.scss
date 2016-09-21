@@ -54,7 +54,7 @@
   outline: none;
   background: transparent;
 
-  // The "clear X" that IE adds to input[type="search"]
+  // The the "clear X" that IE adds to input[type="search"]
   &::-ms-clear {
     display: none;
   }
@@ -125,10 +125,15 @@
   }
 }
 
-@mixin rtl-prop($ltr-prop, $rtl-prop, $value, $reset-value) {
+@mixin rtl-prop($ltr-prop, $rtl-prop, $value) {
   #{$ltr-prop}: $value;
   [dir=rtl] & {
-    #{$ltr-prop}: $reset-value;
+    // fallback for auto
+    #{$ltr-prop}: 0;
+    // fallback for IE
+    #{$ltr-prop}: auto;
+    #{$ltr-prop}: initial;
+
     #{$rtl-prop}: $value;
   }
 }
@@ -171,7 +176,7 @@
   $height: $checkbox-height,
   $border-width: $checkbox-border-width,
   $border-radius: $checkbox-border-radius) {
-  .md-container {
+  ._md-container {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
@@ -223,7 +228,7 @@
   }
 
   // unchecked
-  .md-icon {
+  ._md-icon {
     box-sizing: border-box;
     transition: 240ms;
     position: absolute;
@@ -236,15 +241,15 @@
     border-radius: $border-radius;
   }
 
-  &#{$checkedSelector} .md-icon {
-    border-color: transparent;
+  &#{$checkedSelector} ._md-icon {
+    border: none;
 
     &:after {
       box-sizing: border-box;
       transform: rotate(45deg);
       position: absolute;
-      left: $width / 3 - $border-width;
-      top: $width / 9 - $border-width;
+      left: $width / 3;
+      top: $width / 9;
       display: table;
       width: $width / 3;
       height: $width * 2 / 3;
@@ -261,7 +266,7 @@
     cursor: default;
   }
 
-  &.md-indeterminate .md-icon {
+  &.md-indeterminate ._md-icon {
     &:after {
       box-sizing: border-box;
       position: absolute;
@@ -276,48 +281,6 @@
       border-top: 0;
       border-left: 0;
       content: '';
-    }
-  }
-}
-
-// Mixin to create a primary checkbox.
-// Used by the checkbox and select component.
-@mixin checkbox-primary($checkedSelector: '.md-checked') {
-  .md-ripple {
-    color: '{{primary-600}}';
-  }
-
-  &#{$checkedSelector} .md-ripple {
-    color: '{{background-600}}';
-  }
-
-  .md-ink-ripple {
-    color: '{{foreground-2}}';
-  }
-
-  &#{$checkedSelector} .md-ink-ripple {
-    color: '{{primary-color-0.87}}';
-  }
-
-  &:not(.md-checked) .md-icon {
-    border-color: '{{foreground-2}}';
-  }
-
-  &#{$checkedSelector} .md-icon {
-    background-color: '{{primary-color-0.87}}';
-  }
-
-  &#{$checkedSelector}.md-focused .md-container:before {
-    background-color: '{{primary-color-0.26}}';
-  }
-
-  &#{$checkedSelector} .md-icon:after {
-    border-color: '{{primary-contrast-0.87}}';
-  }
-
-  & .md-indeterminate[disabled] {
-    .md-container {
-      color: '{{foreground-3}}';
     }
   }
 }

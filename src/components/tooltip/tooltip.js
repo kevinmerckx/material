@@ -3,9 +3,8 @@
  * @name material.components.tooltip
  */
 angular
-  .module('material.components.tooltip', [ 'material.core' ])
-  .directive('mdTooltip', MdTooltipDirective)
-  .service('$$mdTooltipRegistry', MdTooltipRegistry);
+    .module('material.components.tooltip', [ 'material.core' ])
+    .directive('mdTooltip', MdTooltipDirective);
 
 /**
  * @ngdoc directive
@@ -24,30 +23,26 @@ angular
  *   <md-tooltip>
  *     Play Music
  *   </md-tooltip>
- *   <md-icon md-svg-src="img/icons/ic_play_arrow_24px.svg"></md-icon>
+ *   <md-icon icon="img/icons/ic_play_arrow_24px.svg"></md-icon>
  * </md-button>
  * </hljs>
  *
  * @param {expression=} md-visible Boolean bound to whether the tooltip is currently visible.
- * @param {number=} md-delay How many milliseconds to wait to show the tooltip after the user focuses, hovers, or touches the
- * parent. Defaults to 0ms on non-touch devices and 75ms on touch.
+ * @param {number=} md-delay How many milliseconds to wait to show the tooltip after the user focuses, hovers, or touches the parent. Defaults to 0ms.
  * @param {boolean=} md-autohide If present or provided with a boolean value, the tooltip will hide on mouse leave, regardless of focus
  * @param {string=} md-direction Which direction would you like the tooltip to go?  Supports left, right, top, and bottom.  Defaults to bottom.
  */
-function MdTooltipDirective($timeout, $window, $$rAF, $document, $mdUtil, $mdTheming, $animate,
-  $interpolate, $$mdTooltipRegistry) {
+function MdTooltipDirective($timeout, $window, $$rAF, $document, $mdUtil, $mdTheming, $rootElement,
+                            $animate, $q, $interpolate) {
 
-  var ENTER_EVENTS = 'focus touchstart mouseenter';
-  var LEAVE_EVENTS = 'blur touchcancel mouseleave';
-  var SHOW_CLASS = 'md-show';
   var TOOLTIP_SHOW_DELAY = 0;
   var TOOLTIP_WINDOW_EDGE_SPACE = 8;
 
   return {
     restrict: 'E',
     transclude: true,
-    priority: 210, // Before ngAria
-    template: '<div class="md-content _md" ng-transclude></div>',
+    priority:210, // Before ngAria
+    template: '<div class="_md-content _md" ng-transclude></div>',
     scope: {
       delay: '=?mdDelay',
       visible: '=?mdVisible',
@@ -68,7 +63,7 @@ function MdTooltipDirective($timeout, $window, $$rAF, $document, $mdUtil, $mdThe
     $mdTheming(element);
 
     var parent        = $mdUtil.getParentWithPointerEvents(element),
-        content       = angular.element(element[0].querySelector('.md-content')),
+        content       = angular.element(element[0].getElementsByClassName('_md-content')[0]),
         tooltipParent = angular.element(document.body),
         showTimeout   = null,
         debouncedOnResize = $$rAF.throttle(function () { updatePosition(); });
@@ -144,7 +139,7 @@ function MdTooltipDirective($timeout, $window, $$rAF, $document, $mdUtil, $mdThe
       // - In these cases the scope might not have been destroyed, which is why we
       // destroy it manually. An example of this can be having `md-visible="false"` and
       // adding tooltips while they're invisible. If `md-visible` becomes true, at some
-      // point, you'd usually get a lot of tooltips.
+      // point, you'd usually get a lot of inputs.
       // - We use `.one`, not `.on`, because this only needs to fire once. If we were
       // using `.on`, it would get thrown into an infinite loop.
       // - This kicks off the scope's `$destroy` event which finishes the cleanup.
@@ -203,29 +198,30 @@ function MdTooltipDirective($timeout, $window, $$rAF, $document, $mdUtil, $mdThe
       var windowBlurHandler = function() {
         elementFocusedOnWindowBlur = document.activeElement === parent[0];
       };
-
       var elementFocusedOnWindowBlur = false;
 
       function windowScrollHandler() {
         setVisible(false);
       }
 
-      $$mdTooltipRegistry.register('scroll', windowScrollHandler, true);
-      $$mdTooltipRegistry.register('blur', windowBlurHandler);
-      $$mdTooltipRegistry.register('resize', debouncedOnResize);
+      angular.element($window)
+        .on('blur', windowBlurHandler)
+        .on('resize', debouncedOnResize);
 
+      document.addEventListener('scroll', windowScrollHandler, true);
       scope.$on('$destroy', function() {
-          $$mdTooltipRegistry.deregister('scroll', windowScrollHandler, true);
-          $$mdTooltipRegistry.deregister('blur', windowBlurHandler);
-          $$mdTooltipRegistry.deregister('resize', debouncedOnResize);
+        angular.element($window)
+          .off('blur', windowBlurHandler)
+          .off('resize', debouncedOnResize);
 
         parent
-          .off(ENTER_EVENTS, enterHandler)
-          .off(LEAVE_EVENTS, leaveHandler)
+          .off('focus mouseenter touchstart', enterHandler)
+          .off('blur mouseleave touchend touchcancel', leaveHandler)
           .off('mousedown', mousedownHandler);
 
         // Trigger the handler in case any the tooltip was still visible.
         leaveHandler();
+        document.removeEventListener('scroll', windowScrollHandler, true);
         attributeObserver && attributeObserver.disconnect();
       });
 
@@ -233,26 +229,16 @@ function MdTooltipDirective($timeout, $window, $$rAF, $document, $mdUtil, $mdThe
         // Prevent the tooltip from showing when the window is receiving focus.
         if (e.type === 'focus' && elementFocusedOnWindowBlur) {
           elementFocusedOnWindowBlur = false;
-        } else if (!scope.visible) {
-          parent.on(LEAVE_EVENTS, leaveHandler);
-          setVisible(true);
-
-          // If the user is on a touch device, we should bind the tap away after
-          // the `touched` in order to prevent the tooltip being removed immediately.
-          if (e.type === 'touchstart') {
-            parent.one('touchend', function() {
-              $mdUtil.nextTick(function() {
-                $document.one('touchend', leaveHandler);
-              }, false);
-            });
-          }
+          return;
         }
+        parent.on('blur mouseleave touchend touchcancel', leaveHandler );
+        setVisible(true);
       };
-
       var leaveHandler = function () {
         var autohide = scope.hasOwnProperty('autohide') ? scope.autohide : attr.hasOwnProperty('mdAutohide');
 
-        if (autohide || mouseActive || $document[0].activeElement !== parent[0]) {
+        if (autohide || mouseActive || ($document[0].activeElement !== parent[0]) ) {
+
           // When a show timeout is currently in progress, then we have to cancel it.
           // Otherwise the tooltip will remain showing without focus or hover.
           if (showTimeout) {
@@ -261,20 +247,19 @@ function MdTooltipDirective($timeout, $window, $$rAF, $document, $mdUtil, $mdThe
             showTimeout = null;
           }
 
-          parent.off(LEAVE_EVENTS, leaveHandler);
-          parent.triggerHandler('blur');
+          parent.off('blur mouseleave touchend touchcancel', leaveHandler );
+          parent.triggerHandler("blur");
           setVisible(false);
         }
         mouseActive = false;
       };
-
       var mousedownHandler = function() {
         mouseActive = true;
       };
 
       // to avoid `synthetic clicks` we listen to mousedown instead of `click`
       parent.on('mousedown', mousedownHandler);
-      parent.on(ENTER_EVENTS, enterHandler);
+      parent.on('focus mouseenter touchstart', enterHandler );
     }
 
     function setVisible (value) {
@@ -328,16 +313,23 @@ function MdTooltipDirective($timeout, $window, $$rAF, $document, $mdUtil, $mdThe
       updatePosition();
       element.css({visibility: 'visible'});
 
-      $animate.addClass(content, SHOW_CLASS).then(function() {
-        element.addClass(SHOW_CLASS);
+      angular.forEach([element, content], function (element) {
+        $animate.addClass(element, '_md-show');
       });
     }
 
     function hideTooltip() {
-      $animate.removeClass(content, SHOW_CLASS).then(function(){
-        element.removeClass(SHOW_CLASS);
-        if (!scope.visible) element.detach();
-      });
+        var promises = [];
+        angular.forEach([element, content], function (it) {
+          if (it.parent() && it.hasClass('_md-show')) {
+            promises.push($animate.removeClass(it, '_md-show'));
+          }
+        });
+
+        $q.all(promises)
+          .then(function () {
+            if (!scope.visible) element.detach();
+          });
     }
 
     function updatePosition() {
@@ -392,79 +384,4 @@ function MdTooltipDirective($timeout, $window, $$rAF, $document, $mdUtil, $mdThe
 
   }
 
-}
-
-/**
- * Service that is used to reduce the amount of listeners that are being
- * registered on the `window` by the tooltip component. Works by collecting
- * the individual event handlers and dispatching them from a global handler.
- *
- * @ngInject
- */
-function MdTooltipRegistry() {
-  var listeners = {};
-  var ngWindow = angular.element(window);
-
-  return {
-    register: register,
-    deregister: deregister
-  };
-
-  /**
-   * Global event handler that dispatches the registered
-   * handlers in the service.
-   * @param  {Event} event Event object passed in by the browser.
-   */
-  function globalEventHandler(event) {
-    if (listeners[event.type]) {
-      listeners[event.type].forEach(function(currentHandler) {
-        currentHandler.call(this, event);
-      }, this);
-    }
-  }
-
-  /**
-   * Registers a new handler with the service.
-   * @param  {String} type Type of event to be registered.
-   * @param  {Function} handler Event handler
-   * @param  {Boolean} useCapture Whether to use event capturing.
-   */
-  function register(type, handler, useCapture) {
-    var array = listeners[type] = listeners[type] || [];
-
-    if (!array.length) {
-      if (useCapture) {
-        window.addEventListener(type, globalEventHandler, true);
-      } else {
-        ngWindow.on(type, globalEventHandler);
-      }
-    }
-
-    if (array.indexOf(handler) === -1) {
-      array.push(handler);
-    }
-  }
-
-  /**
-   * Removes an event handler from the service.
-   * @param  {String} type Type of event handler.
-   * @param  {Function} handler The event handler itself.
-   * @param  {Boolean} useCapture Whether the event handler used event capturing.
-   */
-  function deregister(type, handler, useCapture) {
-    var array = listeners[type];
-    var index = array ? array.indexOf(handler) : -1;
-
-    if (index > -1) {
-      array.splice(index, 1);
-
-      if (array.length === 0) {
-        if (useCapture) {
-          window.removeEventListener(type, globalEventHandler, true);
-        } else {
-          ngWindow.off(type, globalEventHandler);
-        }
-      }
-    }
-  }
 }

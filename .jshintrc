@@ -1,6 +1,5 @@
 {
   "expr": true,
   "boss": true,
-  "laxbreak": true,
-  "predef": ["angular"]
+  "laxbreak": true
 }

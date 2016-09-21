@@ -1,5 +1,5 @@
 (function() {
-  angular.module('docsApp')
+  DocsApp
     .factory('$demoAngularScripts', ['BUILDCONFIG', DemoAngularScripts]);
 
   function DemoAngularScripts(BUILDCONFIG) {

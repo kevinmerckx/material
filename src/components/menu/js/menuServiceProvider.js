@@ -34,7 +34,7 @@ function MenuProvider($$interimElementProvider) {
       disableParentScroll: true,
       skipCompile: true,
       preserveScope: true,
-      multiple: true,
+      skipHide: true,
       themable: true
     };
 
@@ -55,7 +55,7 @@ function MenuProvider($$interimElementProvider) {
       }
 
       if (options.hasBackdrop) {
-        options.backdrop = $mdUtil.createBackdrop(scope, "md-menu-backdrop md-click-catcher");
+        options.backdrop = $mdUtil.createBackdrop(scope, "_md-menu-backdrop _md-click-catcher");
 
         $animate.enter(options.backdrop, $document[0].body);
       }
@@ -74,7 +74,7 @@ function MenuProvider($$interimElementProvider) {
      * and backdrop
      */
     function onRemove(scope, element, opts) {
-      opts.cleanupInteraction && opts.cleanupInteraction();
+      opts.cleanupInteraction();
       opts.cleanupResizing();
       opts.hideBackdrop();
 
@@ -88,14 +88,14 @@ function MenuProvider($$interimElementProvider) {
        * For forced closes (like $destroy events), skip the animations
        */
       function animateRemoval() {
-        return $animateCss(element, {addClass: 'md-leave'}).start();
+        return $animateCss(element, {addClass: '_md-leave'}).start();
       }
 
       /**
        * Detach the element
        */
       function detachAndClean() {
-        element.removeClass('md-active');
+        element.removeClass('_md-active');
         detachElement(element, opts);
         opts.alreadyOpen = false;
       }
@@ -134,12 +134,12 @@ function MenuProvider($$interimElementProvider) {
         return $q(function(resolve) {
           var position = calculateMenuPosition(element, opts);
 
-          element.removeClass('md-leave');
+          element.removeClass('_md-leave');
 
           // Animate the menu scaling, and opacity [from its position origin (default == top-left)]
           // to normal scale.
           $animateCss(element, {
-            addClass: 'md-active',
+            addClass: '_md-active',
             from: animator.toCss(position),
             to: animator.toCss({transform: ''})
           })
@@ -190,7 +190,7 @@ function MenuProvider($$interimElementProvider) {
           $window.removeEventListener('resize', repositionMenu);
           $window.removeEventListener('orientationchange', repositionMenu);
 
-        };
+        }
       }
 
       /**
@@ -198,7 +198,7 @@ function MenuProvider($$interimElementProvider) {
        * clicks, keypresses, backdrop closing, etc.
        */
       function activateInteraction() {
-        element.addClass('md-clickable');
+        element.addClass('_md-clickable');
 
         // close on backdrop click
         if (opts.backdrop) opts.backdrop.on('click', onBackdropClick);
@@ -210,29 +210,20 @@ function MenuProvider($$interimElementProvider) {
         opts.menuContentEl.on('keydown', onMenuKeyDown);
         opts.menuContentEl[0].addEventListener('click', captureClickListener, true);
 
-        // kick off initial focus in the menu on the first enabled element
+        // kick off initial focus in the menu on the first element
         var focusTarget = opts.menuContentEl[0]
           .querySelector(prefixer.buildSelector(['md-menu-focus-target', 'md-autofocus']));
 
         if ( !focusTarget ) {
-          var childrenLen = opts.menuContentEl[0].children.length;
-          for(var childIndex = 0; childIndex < childrenLen; childIndex++) {
-            var child = opts.menuContentEl[0].children[childIndex];
-            focusTarget = child.querySelector('.md-button:not([disabled])');
-            if (focusTarget) {
-              break;
-            }
-            if (child.firstElementChild && !child.firstElementChild.disabled) {
-              focusTarget = child.firstElementChild;
-              break;
-            }
-          }
+          var firstChild = opts.menuContentEl[0].firstElementChild;
+
+          focusTarget = firstChild && (firstChild.querySelector('.md-button:not([disabled])') || firstChild.firstElementChild);
         }
 
         focusTarget && focusTarget.focus();
 
         return function cleanupInteraction() {
-          element.removeClass('md-clickable');
+          element.removeClass('_md-clickable');
           if (opts.backdrop) opts.backdrop.off('click', onBackdropClick);
           opts.menuContentEl.off('keydown', onMenuKeyDown);
           opts.menuContentEl[0].removeEventListener('click', captureClickListener, true);
@@ -308,7 +299,7 @@ function MenuProvider($$interimElementProvider) {
               }
               break;
             }
-          } while (target = target.parentNode);
+          } while (target = target.parentNode)
 
           function close() {
             scope.$apply(function() {
@@ -446,7 +437,7 @@ function MenuProvider($$interimElementProvider) {
       }
 
       var rtl = ($mdUtil.bidi() == 'rtl');
-
+      
       switch (positionMode.left) {
         case 'target':
           position.left = existingOffsets.left + originNodeRect.left - alignTargetRect.left;
@@ -465,17 +456,8 @@ function MenuProvider($$interimElementProvider) {
           position.left = willFitRight ? originNodeRect.right - originNode.style.left : originNodeRect.left - originNode.style.left - openMenuNodeRect.width;
           transformOrigin += willFitRight ? 'left' : 'right';
           break;
-        case 'right':
-          if (rtl) {
-            position.left = originNodeRect.right - originNodeRect.width;
-            transformOrigin += 'left';
-          } else {
-            position.left = originNodeRect.right - openMenuNodeRect.width;
-            transformOrigin += 'right';
-          }
-          break;
         case 'left':
-          if (rtl) {
+          if(rtl) {
             position.left = originNodeRect.right - openMenuNodeRect.width;
             transformOrigin += 'right';
           } else {
