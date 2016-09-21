@@ -16,7 +16,7 @@ describe('material.components.menu', function() {
     });
     attachedElements = [];
 
-    var abandonedMenus = $document[0].querySelectorAll('._md-open-menu-container');
+    var abandonedMenus = $document[0].querySelectorAll('.md-open-menu-container');
     angular.element(abandonedMenus).remove();
   }));
 
@@ -111,6 +111,17 @@ describe('material.components.menu', function() {
 
       menu.remove();
 
+      expect($document.find('md-backdrop').length).toBe(0);
+    }));
+
+    it('should remove the backdrop if the container scope got destroyed', inject(function($document, $rootScope) {
+      var scope = $rootScope.$new();
+      var menu = setup(null, null, scope);
+
+      openMenu(menu);
+      expect($document.find('md-backdrop').length).not.toBe(0);
+
+      scope.$destroy();
       expect($document.find('md-backdrop').length).toBe(0);
     }));
 
@@ -277,7 +288,7 @@ describe('material.components.menu', function() {
     var res;
     el = (el instanceof angular.element) ? el[0] : el;
     inject(function($document) {
-      var container = $document[0].querySelector('._md-open-menu-container');
+      var container = $document[0].querySelector('.md-open-menu-container');
       if (container && container.style.display == 'none') {
         res = [];
       } else {

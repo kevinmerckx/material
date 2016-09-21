@@ -179,6 +179,9 @@ function AnimateDomUtils($mdUtil, $q, $timeout, $mdConstant, $animateCss) {
             case 'transformOrigin':
               convertToVendor(key, $mdConstant.CSS.TRANSFORM_ORIGIN, value);
               break;
+            case 'font-size':
+              css['font-size'] = value; // font sizes aren't always in px
+              break;
           }
         }
       });
@@ -203,7 +206,7 @@ function AnimateDomUtils($mdUtil, $q, $timeout, $mdConstant, $animateCss) {
 
       if (addTransition) {
         transition = transition || "all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) !important";
-        css['transition'] = transition;
+        css.transition = transition;
       }
 
       return css;
@@ -218,7 +221,7 @@ function AnimateDomUtils($mdUtil, $q, $timeout, $mdConstant, $animateCss) {
       destination = destination || {};
 
       angular.forEach('left top right bottom width height'.split(' '), function (key) {
-        destination[key] = Math.round(source[key])
+        destination[key] = Math.round(source[key]);
       });
 
       destination.width = destination.width || (destination.right - destination.left);
@@ -251,5 +254,5 @@ function AnimateDomUtils($mdUtil, $q, $timeout, $mdConstant, $animateCss) {
     }
 
   };
-};
+}
 

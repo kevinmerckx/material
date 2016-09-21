@@ -27,12 +27,12 @@ describe('mdSidenav', function() {
       $rootScope.$apply('show = true');
 
       $material.flushOutstandingAnimations();
-      expect(el.hasClass('_md-closed')).toBe(false);
+      expect(el.hasClass('md-closed')).toBe(false);
       expect(el.parent().find('md-backdrop').length).toBe(1);
 
       $rootScope.$apply('show = false');
       $material.flushOutstandingAnimations();
-      expect(el.hasClass('_md-closed')).toBe(true);
+      expect(el.hasClass('md-closed')).toBe(true);
       expect(el.parent().find('md-backdrop').length).toBe(0);
     }));
 
@@ -145,12 +145,12 @@ describe('mdSidenav', function() {
 
     it('should lock open when is-locked-open is true', inject(function($rootScope, $material, $document) {
       var el = setup('md-is-open="show" md-is-locked-open="lock"');
-      expect(el.hasClass('_md-locked-open')).toBe(false);
+      expect(el.hasClass('md-locked-open')).toBe(false);
       $rootScope.$apply('lock = true');
-      expect(el.hasClass('_md-locked-open')).toBe(true);
+      expect(el.hasClass('md-locked-open')).toBe(true);
       $rootScope.$apply('show = true');
       $material.flushOutstandingAnimations();
-      expect(el.parent().find('md-backdrop').hasClass('_md-locked-open')).toBe(true);
+      expect(el.parent().find('md-backdrop').hasClass('md-locked-open')).toBe(true);
     }));
 
     it('should expose $mdMedia service as $media local in is-locked-open attribute', function() {
@@ -162,6 +162,47 @@ describe('mdSidenav', function() {
         var el = setup('md-is-locked-open="$mdMedia(123)"');
         expect($mdMedia).toHaveBeenCalledWith(123);
       });
+    });
+
+    describe('parent scroll prevention', function() {
+      it('should prevent scrolling on the parent element', inject(function($rootScope) {
+        var parent = setup('md-is-open="isOpen"').parent()[0];
+
+        expect(parent.style.overflow).toBeFalsy();
+        $rootScope.$apply('isOpen = true');
+        expect(parent.style.overflow).toBe('hidden');
+      }));
+
+      it('should prevent scrolling on a custom element', inject(function($compile, $rootScope) {
+        var preventScrollTarget = angular.element('<div id="prevent-scroll-target"></div>');
+        var parent = angular.element(
+          '<div>' +
+            '<md-sidenav md-disable-scroll-target="#prevent-scroll-target" md-is-open="isOpen"></md-sidenav>' +
+          '</div>'
+        );
+
+        preventScrollTarget.append(parent);
+        angular.element(document.body).append(preventScrollTarget);
+        $compile(preventScrollTarget)($rootScope);
+
+        expect(preventScrollTarget[0].style.overflow).toBeFalsy();
+        expect(parent[0].style.overflow).toBeFalsy();
+
+        $rootScope.$apply('isOpen = true');
+        expect(preventScrollTarget[0].style.overflow).toBe('hidden');
+        expect(parent[0].style.overflow).toBeFalsy();
+        preventScrollTarget.remove();
+      }));
+
+      it('should log a warning and fall back to the parent if the custom scroll target does not exist',
+        inject(function($rootScope, $log) {
+          spyOn($log, 'warn');
+          var parent = setup('md-is-open="isOpen" md-disable-scroll-target="does-not-exist"').parent()[0];
+
+          $rootScope.$apply('isOpen = true');
+          expect($log.warn).toHaveBeenCalled();
+          expect(parent.style.overflow).toBe('hidden');
+        }));
     });
 
   });
@@ -179,22 +220,22 @@ describe('mdSidenav', function() {
       var controller = el.controller('mdSidenav');
 
       // Should start closed
-      expect(el.hasClass('_md-closed')).toBe(true);
+      expect(el.hasClass('md-closed')).toBe(true);
 
       controller.open();
       scope.$apply();
 
-      expect(el.hasClass('_md-closed')).toBe(false);
+      expect(el.hasClass('md-closed')).toBe(false);
 
       controller.close();
       scope.$apply();
 
-      expect(el.hasClass('_md-closed')).toBe(true);
+      expect(el.hasClass('md-closed')).toBe(true);
 
       controller.toggle();
       scope.$apply();
 
-      expect(el.hasClass('_md-closed')).toBe(false);
+      expect(el.hasClass('md-closed')).toBe(false);
     }));
 
   });
@@ -277,7 +318,7 @@ describe('mdSidenav', function() {
       flush();
       expect(openDone).toBe(2);
       expect(closeDone).toBe(0);
-      expect(el.hasClass('_md-closed')).toBe(false);
+      expect(el.hasClass('md-closed')).toBe(false);
 
       controller
         .close()
@@ -286,7 +327,7 @@ describe('mdSidenav', function() {
       flush();
       expect(openDone).toBe(2);
       expect(closeDone).toBe(1);
-      expect(el.hasClass('_md-closed')).toBe(true);
+      expect(el.hasClass('md-closed')).toBe(true);
     });
 
   });
@@ -309,22 +350,22 @@ describe('mdSidenav', function() {
       instance.open();
       scope.$apply();
 
-      expect(el.hasClass('_md-closed')).toBe(false);
+      expect(el.hasClass('md-closed')).toBe(false);
 
       instance.close();
       scope.$apply();
 
-      expect(el.hasClass('_md-closed')).toBe(true);
+      expect(el.hasClass('md-closed')).toBe(true);
 
       instance.toggle();
       scope.$apply();
 
-      expect(el.hasClass('_md-closed')).toBe(false);
+      expect(el.hasClass('md-closed')).toBe(false);
 
       instance.toggle();
       scope.$apply();
 
-      expect(el.hasClass('_md-closed')).toBe(true);
+      expect(el.hasClass('md-closed')).toBe(true);
     }));
 
     it('exposes state', inject(function($mdSidenav) {
@@ -439,6 +480,63 @@ describe('mdSidenav', function() {
       expect(instance).toBeDefined();
       expect(instance.isOpen()).toBeFalsy();
     }));
+
+    describe('onClose', function () {
+      it('should call callback on escape', inject(function($mdSidenav, $rootScope, $material, $mdConstant, $timeout) {
+        var el = setup('md-component-id="left" md-is-open="show"');
+        var callback = jasmine.createSpy("callback spy");
+
+        $mdSidenav('left')
+          .onClose(callback);
+
+        $rootScope.$apply('show = true');
+
+        $material.flushOutstandingAnimations();
+        el.parent().triggerHandler({
+          type: 'keydown',
+          keyCode: $mdConstant.KEY_CODE.ESCAPE
+        });
+        $timeout.flush();
+        expect($rootScope.show).toBe(false);
+        expect(callback).toHaveBeenCalled();
+      }));
+
+      it('should call callback on backdrop click', inject(function($mdSidenav, $rootScope, $material, $timeout) {
+        var el = setup('md-component-id="left" md-is-open="show"');
+        var callback = jasmine.createSpy("callback spy");
+
+        $mdSidenav('left')
+          .onClose(callback);
+
+        $rootScope.$apply('show = true');
+
+        $material.flushOutstandingAnimations();
+        el.parent().find('md-backdrop').triggerHandler('click');
+        $timeout.flush();
+        expect($rootScope.show).toBe(false);
+        expect(callback).toHaveBeenCalled();
+      }));
+
+      it('should call callback on close', inject(function($mdSidenav, $rootScope, $material, $timeout) {
+        var el = setup('md-component-id="left"');
+        var callback = jasmine.createSpy("callback spy");
+
+        $mdSidenav('left')
+          .onClose(callback)
+          .open();
+
+        $timeout.flush();
+
+        expect(el.hasClass('md-closed')).toBe(false);
+
+        $mdSidenav('left')
+          .close();
+
+        $timeout.flush();
+
+        expect(callback).toHaveBeenCalled();
+      }));
+    });
   });
 
 

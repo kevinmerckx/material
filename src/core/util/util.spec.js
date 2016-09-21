@@ -503,6 +503,43 @@ describe('util', function() {
       })
     );
   });
+  
+  describe('isParentFormSubmitted', function() {
+    var formTemplate =
+      '<form>' +
+      '  <input type="text" name="test" ng-model="test" />' +
+      '  <input type="submit" />' +
+      '<form>';
+
+    it('returns false if you pass no element', inject(function($mdUtil) {
+      expect($mdUtil.isParentFormSubmitted()).toBe(false);
+    }));
+    
+    it('returns false if there is no form', inject(function($mdUtil) {
+      var element = angular.element('<input />');
+      
+      expect($mdUtil.isParentFormSubmitted(element)).toBe(false);
+    }));
+    
+    it('returns false if the parent form is NOT submitted', inject(function($compile, $rootScope, $mdUtil) { 
+      var scope = $rootScope.$new();
+      var form = $compile(formTemplate)(scope);
+      
+      expect($mdUtil.isParentFormSubmitted(form.find('input'))).toBe(false);
+    }));
+    
+    it('returns true if the parent form is submitted', inject(function($compile, $rootScope, $mdUtil) {
+      var scope = $rootScope.$new();
+      var form = $compile(formTemplate)(scope);
+
+      var formController = form.controller('form');
+      
+      formController.$setSubmitted();
+
+      expect(formController.$submitted).toBe(true);
+      expect($mdUtil.isParentFormSubmitted(form.find('input'))).toBe(true);
+    }));
+  });
 
   describe('with $interpolate.start/endSymbol override', function() {
 
@@ -520,6 +557,64 @@ describe('util', function() {
 
         expect(output).toEqual('<some-tag>[[some-var]]</some-tag>');
       }));
+    });
+  });
+
+  describe('getClosest', function() {
+    var $mdUtil;
+
+    beforeEach(inject(function(_$mdUtil_) {
+      $mdUtil = _$mdUtil_;
+    }));
+
+    it('should be able to get the closest parent of a particular node type', function() {
+      var grandparent = angular.element('<h1>');
+      var parent = angular.element('<h2>');
+      var element = angular.element('<h3>');
+
+      parent.append(element);
+      grandparent.append(parent);
+
+      var result = $mdUtil.getClosest(element, 'h1');
+
+      expect(result).toBeTruthy();
+      expect(result.nodeName.toLowerCase()).toBe('h1');
+
+      grandparent.remove();
+    });
+
+    it('should be able to start from the parent of the specified node', function() {
+      var grandparent = angular.element('<div>');
+      var parent = angular.element('<span>');
+      var element = angular.element('<div>');
+
+      parent.append(element);
+      grandparent.append(parent);
+
+      var result = $mdUtil.getClosest(element, 'div', true);
+
+      expect(result).toBeTruthy();
+      expect(result).not.toBe(element[0]);
+
+      grandparent.remove();
+    });
+
+    it('should be able to take in a predicate function', function() {
+      var grandparent = angular.element('<div random-attr>');
+      var parent = angular.element('<div>');
+      var element = angular.element('<span>');
+
+      parent.append(element);
+      grandparent.append(parent);
+
+      var result = $mdUtil.getClosest(element, function(el) {
+        return el.hasAttribute('random-attr');
+      });
+
+      expect(result).toBeTruthy();
+      expect(result).toBe(grandparent[0]);
+
+      grandparent.remove();
     });
   });
 });
