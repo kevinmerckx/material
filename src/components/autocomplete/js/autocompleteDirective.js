@@ -19,6 +19,8 @@ angular
  *     no matches were found.  You can do this by wrapping your template in `md-item-template` and
  *     adding a tag for `md-not-found`.  An example of this is shown below.
  *
+ * To reset the displayed value you must clear both values for `md-search-text` and `md-selected-item`.
+ *
  * ### Validation
  *
  * You can use `ng-messages` to include validation the same way that you would normally validate;
@@ -31,6 +33,12 @@ angular
  * - Add a `name` to `md-autocomplete` (to be used on the generated `input`)
  *
  * There is an example below of how this should look.
+ *
+ * ### Notes
+ * The `md-autocomplete` uses the the <a ng-href="api/directive/mdVirtualRepeatContainer">VirtualRepeat</a>
+ * directive for displaying the results inside of the dropdown.<br/>
+ * > When encountering issues regarding the item template please take a look at the
+ *   <a ng-href="api/directive/mdVirtualRepeatContainer">VirtualRepeatContainer</a> documentation.
  *
  *
  * @param {expression} md-items An expression in the format of `item in items` to iterate over
@@ -45,6 +53,8 @@ angular
  * @param {string=} placeholder Placeholder text that will be forwarded to the input.
  * @param {boolean=} md-no-cache Disables the internal caching that happens in autocomplete
  * @param {boolean=} ng-disabled Determines whether or not to disable the input field
+ * @param {boolean=} md-require-match When set to true, the autocomplete will add a validator,
+ *     which will evaluate to false, when no item is currently selected.
  * @param {number=} md-min-length Specifies the minimum length of text before autocomplete will
  *     make suggestions
  * @param {number=} md-delay Specifies the amount of time (in milliseconds) to wait before looking
@@ -53,7 +63,8 @@ angular
  *     `$mdBottomsheet` or `$mdSidenav`, which contains the autocomplete, is opening. <br/><br/>
  *     Also the autocomplete will immediately focus the input element.
  * @param {boolean=} md-no-asterisk When present, asterisk will not be appended to the floating label
- * @param {boolean=} md-autoselect If true, the first item will be selected by default
+ * @param {boolean=} md-autoselect If set to true, the first item will be automatically selected
+ *     in the dropdown upon open.
  * @param {string=} md-menu-class This will be applied to the dropdown menu for styling
  * @param {string=} md-floating-label This will add a floating label to autocomplete and wrap it in
  *     `md-input-container`
@@ -65,9 +76,16 @@ angular
  * @param {number=} md-input-minlength The minimum length for the input's value for validation
  * @param {number=} md-input-maxlength The maximum length for the input's value for validation
  * @param {boolean=} md-select-on-match When set, autocomplete will automatically select exact
- *     the item if the search text is an exact match
+ *     the item if the search text is an exact match. <br/><br/>
+ *     Exact match means that there is only one match showing up.
  * @param {boolean=} md-match-case-insensitive When set and using `md-select-on-match`, autocomplete
  *     will select on case-insensitive match
+ * @param {string=} md-escape-options Override escape key logic. Default is `blur clear`.<br/>
+ *     Options: `blur | clear`, `none`
+ * @param {string=} md-dropdown-items Specifies the maximum amount of items to be shown in
+ *     the dropdown.<br/><br/>
+ *     When the dropdown doesn't fit into the viewport, the dropdown will shrink
+ *     as less as possible.
  *
  * @usage
  * ### Basic Example
@@ -139,6 +157,7 @@ function MdAutocomplete ($$mdSvgRegistry) {
       itemText:         '&mdItemText',
       placeholder:      '@placeholder',
       noCache:          '=?mdNoCache',
+      requireMatch:     '=?mdRequireMatch',
       selectOnMatch:    '=?mdSelectOnMatch',
       matchInsensitive: '=?mdMatchCaseInsensitive',
       itemChange:       '&?mdSelectedItemChange',
@@ -149,12 +168,27 @@ function MdAutocomplete ($$mdSvgRegistry) {
       floatingLabel:    '@?mdFloatingLabel',
       autoselect:       '=?mdAutoselect',
       menuClass:        '@?mdMenuClass',
-      inputId:          '@?mdInputId'
+      inputId:          '@?mdInputId',
+      escapeOptions:    '@?mdEscapeOptions',
+      dropdownItems:    '=?mdDropdownItems'
     },
-    link: function(scope, element, attrs, controller) {
-      // Retrieve the state of using a md-not-found template by using our attribute, which will
-      // be added to the element in the template function.
-      controller.hasNotFound = !!element.attr('md-has-not-found');
+    compile: function(tElement, tAttrs) {
+      var attributes = ['md-select-on-focus', 'md-no-asterisk', 'ng-trim'];
+      var input = tElement.find('input');
+
+      attributes.forEach(function(attribute) {
+        var attrValue = tAttrs[tAttrs.$normalize(attribute)];
+
+        if (attrValue !== null) {
+          input.attr(attribute, attrValue);
+        }
+      });
+
+      return function(scope, element, attrs, ctrl) {
+        // Retrieve the state of using a md-not-found template by using our attribute, which will
+        // be added to the element in the template function.
+        ctrl.hasNotFound = !!element.attr('md-has-not-found');
+      }
     },
     template:     function (element, attr) {
       var noItemsTemplate = getNoItemsTemplate(),
@@ -173,7 +207,6 @@ function MdAutocomplete ($$mdSvgRegistry) {
 
       return '\
         <md-autocomplete-wrap\
-            layout="row"\
             ng-class="{ \'md-whiteframe-z1\': !floatingLabel, \'md-menu-showing\': !$mdAutocompleteCtrl.hidden }">\
           ' + getInputElement() + '\
           <md-progress-linear\
@@ -203,7 +236,7 @@ function MdAutocomplete ($$mdSvgRegistry) {
           </md-virtual-repeat-container>\
         </md-autocomplete-wrap>\
         <aria-status\
-            class="_md-visually-hidden"\
+            class="md-visually-hidden"\
             role="status"\
             aria-live="assertive">\
           <p ng-repeat="message in $mdAutocompleteCtrl.messages track by $index" ng-if="message">{{message}}</p>\
@@ -229,7 +262,7 @@ function MdAutocomplete ($$mdSvgRegistry) {
       function getInputElement () {
         if (attr.mdFloatingLabel) {
           return '\
-            <md-input-container flex ng-if="floatingLabel">\
+            <md-input-container ng-if="floatingLabel">\
               <label>{{floatingLabel}}</label>\
               <input type="search"\
                   ' + (tabindex != null ? 'tabindex="' + tabindex + '"' : '') + '\
@@ -242,12 +275,11 @@ function MdAutocomplete ($$mdSvgRegistry) {
                   ng-maxlength="inputMaxlength"\
                   ng-disabled="$mdAutocompleteCtrl.isDisabled"\
                   ng-model="$mdAutocompleteCtrl.scope.searchText"\
+                  ng-model-options="{ allowInvalid: true }"\
                   ng-keydown="$mdAutocompleteCtrl.keydown($event)"\
-                  ng-blur="$mdAutocompleteCtrl.blur()"\
-                  ' + (attr.mdNoAsterisk != null ? 'md-no-asterisk="' + attr.mdNoAsterisk + '"' : '') + '\
+                  ng-blur="$mdAutocompleteCtrl.blur($event)"\
                   ng-focus="$mdAutocompleteCtrl.focus($event)"\
                   aria-owns="ul-{{$mdAutocompleteCtrl.id}}"\
-                  ' + (attr.mdSelectOnFocus != null ? 'md-select-on-focus=""' : '') + '\
                   aria-label="{{floatingLabel}}"\
                   aria-autocomplete="list"\
                   role="combobox"\
@@ -258,7 +290,7 @@ function MdAutocomplete ($$mdSvgRegistry) {
             </md-input-container>';
         } else {
           return '\
-            <input flex type="search"\
+            <input type="search"\
                 ' + (tabindex != null ? 'tabindex="' + tabindex + '"' : '') + '\
                 id="{{ inputId || \'input-\' + $mdAutocompleteCtrl.id }}"\
                 name="{{inputName}}"\
@@ -269,11 +301,10 @@ function MdAutocomplete ($$mdSvgRegistry) {
                 ng-readonly="$mdAutocompleteCtrl.isReadonly"\
                 ng-model="$mdAutocompleteCtrl.scope.searchText"\
                 ng-keydown="$mdAutocompleteCtrl.keydown($event)"\
-                ng-blur="$mdAutocompleteCtrl.blur()"\
+                ng-blur="$mdAutocompleteCtrl.blur($event)"\
                 ng-focus="$mdAutocompleteCtrl.focus($event)"\
                 placeholder="{{placeholder}}"\
                 aria-owns="ul-{{$mdAutocompleteCtrl.id}}"\
-                ' + (attr.mdSelectOnFocus != null ? 'md-select-on-focus=""' : '') + '\
                 aria-label="{{placeholder}}"\
                 aria-autocomplete="list"\
                 role="combobox"\
@@ -286,7 +317,7 @@ function MdAutocomplete ($$mdSvgRegistry) {
                 ng-if="$mdAutocompleteCtrl.scope.searchText && !$mdAutocompleteCtrl.isDisabled"\
                 ng-click="$mdAutocompleteCtrl.clear($event)">\
               <md-icon md-svg-src="' + $$mdSvgRegistry.mdClose + '"></md-icon>\
-              <span class="_md-visually-hidden">Clear</span>\
+              <span class="md-visually-hidden">Clear</span>\
             </button>\
                 ';
         }

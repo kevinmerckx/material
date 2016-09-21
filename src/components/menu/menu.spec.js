@@ -16,7 +16,7 @@ describe('material.components.menu', function() {
     });
     attachedElements = [];
 
-    var abandonedMenus = $document[0].querySelectorAll('._md-open-menu-container');
+    var abandonedMenus = $document[0].querySelectorAll('.md-open-menu-container');
     angular.element(abandonedMenus).remove();
   }));
 
@@ -114,6 +114,17 @@ describe('material.components.menu', function() {
       expect($document.find('md-backdrop').length).toBe(0);
     }));
 
+    it('should remove the backdrop if the container scope got destroyed', inject(function($document, $rootScope) {
+      var scope = $rootScope.$new();
+      var menu = setup(null, null, scope);
+
+      openMenu(menu);
+      expect($document.find('md-backdrop').length).not.toBe(0);
+
+      scope.$destroy();
+      expect($document.find('md-backdrop').length).toBe(0);
+    }));
+
     it('closes on backdrop click', inject(function($document) {
 
       var menu = setup();
@@ -141,6 +152,52 @@ describe('material.components.menu', function() {
       expect(getOpenMenuContainer(menu).length).toBe(0);
     }));
 
+    describe('default focus', function() {
+      it('should focus on first item automatically', inject(function($compile, $rootScope, $document) {
+        var menu = $compile(
+          '<md-menu>' +
+            '<button ng-click="$mdOpenMenu($event)">Hello World</button>' +
+            '<md-menu-content>' +
+              '<md-menu-item>' +
+                '<button id="menuItem0" ng-click="doSomething($event)"></button>' +
+              '</md-menu-item>' +
+              '<md-menu-item>' +
+                '<button ng-click="doSomething($event)"></button>' +
+              '</md-menu-item>' +
+            '</md-menu-content>' +
+          '</md-menu>'
+        )($rootScope);
+
+        openMenu(menu);
+
+        var menuTarget = $document[0].querySelector('#menuItem0');
+
+        expect(document.activeElement).toBe(menuTarget);
+      }));
+
+      it('should focus on first non-disabled item', inject(function($compile, $rootScope, $document) {
+        var menu = $compile(
+          '<md-menu>' +
+            '<button ng-click="$mdOpenMenu($event)">Hello World</button>' +
+            '<md-menu-content>' +
+              '<md-menu-item>' +
+                '<button disabled ng-click="doSomething($event)"></button>' +
+              '</md-menu-item>' +
+              '<md-menu-item>' +
+                '<button id="menuItem1" ng-click="doSomething($event)"></button>' +
+              '</md-menu-item>' +
+            '</md-menu-content>' +
+          '</md-menu>'
+        )($rootScope);
+
+        openMenu(menu);
+
+        var menuTarget = $document[0].querySelector('#menuItem1');
+
+        expect(document.activeElement).toBe(menuTarget);
+      }));
+    });
+
     describe('autofocus', function() {
 
       it('should focus a button with md-menu-focus-target', inject(function($compile, $rootScope, $document) {
@@ -148,6 +205,9 @@ describe('material.components.menu', function() {
           '<md-menu>' +
             '<button ng-click="$mdOpenMenu($event)">Hello World</button>' +
             '<md-menu-content>' +
+              '<md-menu-item>' +
+                '<button ng-click="doSomething($event)"></button>' +
+              '</md-menu-item>' +
               '<md-menu-item>' +
                 '<button id="menuFocus" md-menu-focus-target ng-click="doSomething($event)"></button>' +
               '</md-menu-item>' +
@@ -167,6 +227,9 @@ describe('material.components.menu', function() {
           '<md-menu>' +
             '<button ng-click="$mdOpenMenu($event)">Hello World</button>' +
             '<md-menu-content>' +
+              '<md-menu-item>' +
+                '<button ng-click="doSomething($event)"></button>' +
+              '</md-menu-item>' +
               '<md-menu-item>' +
                 '<button id="menuFocus" md-autofocus ng-click="doSomething($event)"></button>' +
               '</md-menu-item>' +
@@ -277,7 +340,7 @@ describe('material.components.menu', function() {
     var res;
     el = (el instanceof angular.element) ? el[0] : el;
     inject(function($document) {
-      var container = $document[0].querySelector('._md-open-menu-container');
+      var container = $document[0].querySelector('.md-open-menu-container');
       if (container && container.style.display == 'none') {
         res = [];
       } else {

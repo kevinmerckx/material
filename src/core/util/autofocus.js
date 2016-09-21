@@ -93,9 +93,8 @@ angular.module('material.core')
 function MdAutofocusDirective() {
   return {
     restrict: 'A',
-
     link: postLink
-  }
+  };
 }
 
 function postLink(scope, element, attrs) {
@@ -103,6 +102,6 @@ function postLink(scope, element, attrs) {
 
   // Setup a watcher on the proper attribute to update a class we can check for in $mdUtil
   scope.$watch(attr, function(canAutofocus) {
-    element.toggleClass('_md-autofocus', canAutofocus);
+    element.toggleClass('md-autofocus', canAutofocus);
   });
 }

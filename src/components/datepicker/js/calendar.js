@@ -2,16 +2,27 @@
   'use strict';
 
   /**
-   * @ngdoc module
-   * @name material.components.calendar
-   * @description Calendar
+   * @ngdoc directive
+   * @name mdCalendar
+   * @module material.components.datepicker
+   *
+   * @param {Date} ng-model The component's model. Should be a Date object.
+   * @param {Date=} md-min-date Expression representing the minimum date.
+   * @param {Date=} md-max-date Expression representing the maximum date.
+   * @param {(function(Date): boolean)=} md-date-filter Function expecting a date and returning a boolean whether it can be selected or not.
+   *
+   * @description
+   * `<md-calendar>` is a component that renders a calendar that can be used to select a date.
+   * It is a part of the `<md-datepicker` pane, however it can also be used on it's own.
+   *
+   * @usage
+   *
+   * <hljs lang="html">
+   *   <md-calendar ng-model="birthday"></md-calendar>
+   * </hljs>
    */
-  angular.module('material.components.datepicker', [
-    'material.core',
-    'material.components.icon',
-    'material.components.virtualRepeat'
-  ]).directive('mdCalendar', calendarDirective);
-
+  angular.module('material.components.datepicker')
+    .directive('mdCalendar', calendarDirective);
 
   // POST RELEASE
   // TODO(jelbourn): Mac Cmd + left / right == Home / End
@@ -46,7 +57,8 @@
       scope: {
         minDate: '=mdMinDate',
         maxDate: '=mdMaxDate',
-        dateFilter: '=mdDateFilter'
+        dateFilter: '=mdDateFilter',
+        _currentView: '@mdCurrentView'
       },
       require: ['ngModel', 'mdCalendar'],
       controller: CalendarCtrl,
@@ -77,7 +89,7 @@
    * @ngInject @constructor
    */
   function CalendarCtrl($element, $scope, $$mdDateUtil, $mdUtil,
-    $mdConstant, $mdTheming, $$rAF, $attrs) {
+    $mdConstant, $mdTheming, $$rAF, $attrs, $mdDateLocale) {
 
     $mdTheming($element);
 
@@ -105,8 +117,13 @@
     /** @type {!angular.NgModelController} */
     this.ngModelCtrl = null;
 
-    /** @type {String} The currently visible calendar view. */
-    this.currentView = 'month';
+    /**
+     * The currently visible calendar view. Note the prefix on the scope value,
+     * which is necessary, because the datepicker seems to reset the real one value if the
+     * calendar is open, but the value on the datepicker's scope is empty.
+     * @type {String}
+     */
+    this.currentView = this._currentView || 'month';
 
     /** @type {String} Class applied to the selected date cell. */
     this.SELECTED_DATE_CLASS = 'md-calendar-selected-date';
@@ -139,6 +156,20 @@
     this.selectedDate = null;
 
     /**
+     * The first date that can be rendered by the calendar. The default is taken
+     * from the mdDateLocale provider and is limited by the mdMinDate.
+     * @type {Date}
+     */
+    this.firstRenderableDate = null;
+
+    /**
+     * The last date that can be rendered by the calendar. The default comes
+     * from the mdDateLocale provider and is limited by the maxDate.
+     * @type {Date}
+     */
+    this.lastRenderableDate = null;
+
+    /**
      * Used to toggle initialize the root element in the next digest.
      * @type {Boolean}
      */
@@ -164,7 +195,27 @@
       $element.attr('tabindex', '-1');
     }
 
-    $element.on('keydown', angular.bind(this, this.handleKeyEvent));
+    var boundKeyHandler = angular.bind(this, this.handleKeyEvent);
+
+    // Bind the keydown handler to the body, in order to handle cases where the focused
+    // element gets removed from the DOM and stops propagating click events.
+    angular.element(document.body).on('keydown', boundKeyHandler);
+
+    $scope.$on('$destroy', function() {
+      angular.element(document.body).off('keydown', boundKeyHandler);
+    });
+
+    if (this.minDate && this.minDate > $mdDateLocale.firstRenderableDate) {
+      this.firstRenderableDate = this.minDate;
+    } else {
+      this.firstRenderableDate = $mdDateLocale.firstRenderableDate;
+    }
+
+    if (this.maxDate && this.maxDate < $mdDateLocale.lastRenderableDate) {
+      this.lastRenderableDate = this.maxDate;
+    } else {
+      this.lastRenderableDate = $mdDateLocale.lastRenderableDate;
+    }
   }
 
   /**
@@ -375,5 +426,23 @@
       date.getMonth(),
       date.getDate()
     ].join('-');
+  };
+
+  /**
+   * Util to trigger an extra digest on a parent scope, in order to to ensure that
+   * any child virtual repeaters have updated. This is necessary, because the virtual
+   * repeater doesn't update the $index the first time around since the content isn't
+   * in place yet. The case, in which this is an issue, is when the repeater has less
+   * than a page of content (e.g. a month or year view has a min or max date).
+   */
+  CalendarCtrl.prototype.updateVirtualRepeat = function() {
+    var scope = this.$scope;
+    var virtualRepeatResizeListener = scope.$on('$md-resize-enable', function() {
+      if (!scope.$$phase) {
+        scope.$apply();
+      }
+
+      virtualRepeatResizeListener();
+    });
   };
 })();

@@ -19,7 +19,7 @@ angular
 /**
  * @ngInject
  */
-function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $interpolate, $log, $rootElement, $window) {
+function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $interpolate, $log, $rootElement, $window, $$rAF) {
   // Setup some core variables for the processTemplate method
   var startSymbol = $interpolate.startSymbol(),
     endSymbol = $interpolate.endSymbol(),
@@ -43,6 +43,20 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
     return hasValue;
   };
 
+  function validateCssValue(value) {
+    return !value       ? '0'   :
+      hasPx(value) || hasPercent(value) ? value : value + 'px';
+  }
+
+  function hasPx(value) {
+    return String(value).indexOf('px') > -1;
+  }
+
+  function hasPercent(value) {
+    return String(value).indexOf('%') > -1;
+
+  }
+
   var $mdUtil = {
     dom: {},
     now: window.performance ?
@@ -61,22 +75,29 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
       if ( arguments.length == 0 ) return ltr ? 'ltr' : 'rtl';
 
       // If mutator
+      var elem = angular.element(element);
+
       if ( ltr && angular.isDefined(lValue)) {
-        angular.element(element).css(property, validate(lValue));
+        elem.css(property, validateCssValue(lValue));
       }
       else if ( !ltr && angular.isDefined(rValue)) {
-        angular.element(element).css(property, validate(rValue) );
+        elem.css(property, validateCssValue(rValue) );
       }
+    },
 
-        // Internal utils
+    bidiProperty: function (element, lProperty, rProperty, value) {
+      var ltr = !($document[0].dir == 'rtl' || $document[0].body.dir == 'rtl');
 
-        function validate(value) {
-          return !value       ? '0'   :
-                 hasPx(value) ? value : value + 'px';
-        }
-        function hasPx(value) {
-          return String(value).indexOf('px') > -1;
-        }
+      var elem = angular.element(element);
+
+      if ( ltr && angular.isDefined(lProperty)) {
+        elem.css(lProperty, validateCssValue(value));
+        elem.css(rProperty, '');
+      }
+      else if ( !ltr && angular.isDefined(rProperty)) {
+        elem.css(rProperty, validateCssValue(value) );
+        elem.css(lProperty, '');
+      }
     },
 
     clientRect: function(element, offsetParent, isOffsetRect) {
@@ -112,18 +133,12 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
     },
 
     /**
-     * Calculate the positive scroll offset
-     * TODO: Check with pinch-zoom in IE/Chrome;
-     *       https://code.google.com/p/chromium/issues/detail?id=496285
+     * Determines the absolute position of the viewport.
+     * Useful when making client rectangles absolute.
+     * @returns {number}
      */
-    scrollTop: function(element) {
-      element = angular.element(element || $document[0].body);
-
-      var body = (element[0] == $document[0].body) ? $document[0].body : undefined;
-      var scrollTop = body ? body.scrollTop + body.parentElement.scrollTop : 0;
-
-      // Calculate the positive scroll offset
-      return scrollTop || Math.abs(element[0].getBoundingClientRect().top);
+    getViewportTop: function() {
+      return window.scrollY || window.pageYOffset || 0;
     },
 
     /**
@@ -163,9 +178,9 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
           items.length && angular.forEach(items, function(it) {
             it = angular.element(it);
 
-            // Check the element for the _md-autofocus class to ensure any associated expression
+            // Check the element for the md-autofocus class to ensure any associated expression
             // evaluated to true.
-            var isFocusable = it.hasClass('_md-autofocus');
+            var isFocusable = it.hasClass('md-autofocus');
             if (isFocusable) elFound = it;
           });
         }
@@ -178,40 +193,61 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
      * @param element Unused
      * @param {!Element|!angular.JQLite} parent Element to disable scrolling within.
      *   Defaults to body if none supplied.
+     * @param options Object of options to modify functionality
+     *   - disableScrollMask Boolean of whether or not to create a scroll mask element or
+     *     use the passed parent element.
      */
-    disableScrollAround: function(element, parent) {
-      $mdUtil.disableScrollAround._count = $mdUtil.disableScrollAround._count || 0;
-      ++$mdUtil.disableScrollAround._count;
-      if ($mdUtil.disableScrollAround._enableScrolling) return $mdUtil.disableScrollAround._enableScrolling;
-      var body = $document[0].body,
-        restoreBody = disableBodyScroll(),
-        restoreElement = disableElementScroll(parent);
+    disableScrollAround: function(element, parent, options) {
+      options = options || {};
 
-      return $mdUtil.disableScrollAround._enableScrolling = function() {
-        if (!--$mdUtil.disableScrollAround._count) {
+      $mdUtil.disableScrollAround._count = Math.max(0, $mdUtil.disableScrollAround._count || 0);
+      $mdUtil.disableScrollAround._count++;
+
+      if ($mdUtil.disableScrollAround._restoreScroll) {
+        return $mdUtil.disableScrollAround._restoreScroll;
+      }
+
+      var body = $document[0].body;
+      var restoreBody = disableBodyScroll();
+      var restoreElement = disableElementScroll(parent);
+
+      return $mdUtil.disableScrollAround._restoreScroll = function() {
+        if (--$mdUtil.disableScrollAround._count <= 0) {
           restoreBody();
           restoreElement();
-          delete $mdUtil.disableScrollAround._enableScrolling;
+          delete $mdUtil.disableScrollAround._restoreScroll;
         }
       };
 
-      // Creates a virtual scrolling mask to absorb touchmove, keyboard, scrollbar clicking, and wheel events
+      /**
+       * Creates a virtual scrolling mask to prevent touchmove, keyboard, scrollbar clicking,
+       * and wheel events
+       */
       function disableElementScroll(element) {
-        element = angular.element(element || body)[0];
-        var scrollMask = angular.element(
-          '<div class="md-scroll-mask">' +
-          '  <div class="md-scroll-mask-bar"></div>' +
-          '</div>');
-        element.appendChild(scrollMask[0]);
+        element = angular.element(element || body);
+
+        var scrollMask;
+
+        if (options.disableScrollMask) {
+          scrollMask = element;
+        } else {
+          scrollMask = angular.element(
+            '<div class="md-scroll-mask">' +
+            '  <div class="md-scroll-mask-bar"></div>' +
+            '</div>');
+          element.append(scrollMask);
+        }
 
         scrollMask.on('wheel', preventDefault);
         scrollMask.on('touchmove', preventDefault);
 
-        return function restoreScroll() {
+        return function restoreElementScroll() {
           scrollMask.off('wheel');
           scrollMask.off('touchmove');
-          scrollMask[0].parentNode.removeChild(scrollMask[0]);
-          delete $mdUtil.disableScrollAround._enableScrolling;
+
+          if (!options.disableScrollMask) {
+            scrollMask[0].parentNode.removeChild(scrollMask[0]);
+          }
         };
 
         function preventDefault(e) {
@@ -219,45 +255,48 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
         }
       }
 
-      // Converts the body to a position fixed block and translate it to the proper scroll
-      // position
+      // Converts the body to a position fixed block and translate it to the proper scroll position
       function disableBodyScroll() {
-        var htmlNode = body.parentNode;
-        var restoreHtmlStyle = htmlNode.style.cssText || '';
-        var restoreBodyStyle = body.style.cssText || '';
-        var scrollOffset = $mdUtil.scrollTop(body);
+        var documentElement = $document[0].documentElement;
+
+        var prevDocumentStyle = documentElement.style.cssText || '';
+        var prevBodyStyle = body.style.cssText || '';
+
+        var viewportTop = $mdUtil.getViewportTop();
         var clientWidth = body.clientWidth;
 
         if (body.scrollHeight > body.clientHeight + 1) {
-          applyStyles(body, {
+
+          angular.element(body).css({
             position: 'fixed',
             width: '100%',
-            top: -scrollOffset + 'px'
+            top: -viewportTop + 'px'
           });
 
-          htmlNode.style.overflowY = 'scroll';
+          documentElement.style.overflowY = 'scroll';
         }
 
-        if (body.clientWidth < clientWidth) applyStyles(body, {overflow: 'hidden'});
+        if (body.clientWidth < clientWidth) {
+          body.style.overflow = 'hidden';
+        }
 
         return function restoreScroll() {
-          body.style.cssText = restoreBodyStyle;
-          htmlNode.style.cssText = restoreHtmlStyle;
-          body.scrollTop = scrollOffset;
-          htmlNode.scrollTop = scrollOffset;
+          // Reset the inline style CSS to the previous.
+          body.style.cssText = prevBodyStyle;
+          documentElement.style.cssText = prevDocumentStyle;
+
+          // The body loses its scroll position while being fixed.
+          body.scrollTop = viewportTop;
         };
       }
 
-      function applyStyles(el, styles) {
-        for (var key in styles) {
-          el.style[key] = styles[key];
-        }
-      }
     },
+
     enableScrolling: function() {
-      var method = this.disableScrollAround._enableScrolling;
-      method && method();
+      var restoreFn = this.disableScrollAround._restoreScroll;
+      restoreFn && restoreFn();
     },
+
     floatingScrollbars: function() {
       if (this.floatingScrollbars.cached === undefined) {
         var tempNode = angular.element('<div><div></div></div>').css({
@@ -472,19 +511,29 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
      * getClosest replicates jQuery.closest() to walk up the DOM tree until it finds a matching nodeName
      *
      * @param el Element to start walking the DOM from
-     * @param tagName Tag name to find closest to el, such as 'form'
+     * @param check Either a string or a function. If a string is passed, it will be evaluated against
+     * each of the parent nodes' tag name. If a function is passed, the loop will call it with each of
+     * the parents and will use the return value to determine whether the node is a match.
      * @param onlyParent Only start checking from the parent element, not `el`.
      */
-    getClosest: function getClosest(el, tagName, onlyParent) {
+    getClosest: function getClosest(el, validateWith, onlyParent) {
+      if ( angular.isString(validateWith) ) {
+        var tagName = validateWith.toUpperCase();
+        validateWith = function(el) {
+          return el.nodeName.toUpperCase() === tagName;
+        };
+      }
+
       if (el instanceof angular.element) el = el[0];
-      tagName = tagName.toUpperCase();
       if (onlyParent) el = el.parentNode;
       if (!el) return null;
+
       do {
-        if (el.nodeName === tagName) {
+        if (validateWith(el)) {
           return el;
         }
       } while (el = el.parentNode);
+
       return null;
     },
 
@@ -665,6 +714,34 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
     },
 
     /**
+     * Checks if the current browser is natively supporting the `sticky` position.
+     * @returns {string} supported sticky property name
+     */
+    checkStickySupport: function() {
+      var stickyProp;
+      var testEl = angular.element('<div>');
+      $document[0].body.appendChild(testEl[0]);
+
+      var stickyProps = ['sticky', '-webkit-sticky'];
+      for (var i = 0; i < stickyProps.length; ++i) {
+        testEl.css({
+          position: stickyProps[i],
+          top: 0,
+          'z-index': 2
+        });
+
+        if (testEl.css('position') == stickyProps[i]) {
+          stickyProp = stickyProps[i];
+          break;
+        }
+      }
+
+      testEl.remove();
+
+      return stickyProp;
+    },
+
+    /**
      * Parses an attribute value, mostly a string.
      * By default checks for negated values and returns `false´ if present.
      * Negated values are: (native falsy) and negative strings like:
@@ -677,7 +754,66 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
       return value === '' || !!value && (negatedCheck === false || value !== 'false' && value !== '0');
     },
 
-    hasComputedStyle: hasComputedStyle
+    hasComputedStyle: hasComputedStyle,
+
+    /**
+     * Returns true if the parent form of the element has been submitted.
+     *
+     * @param element An Angular or HTML5 element.
+     *
+     * @returns {boolean}
+     */
+    isParentFormSubmitted: function(element) {
+      var parent = $mdUtil.getClosest(element, 'form');
+      var form = parent ? angular.element(parent).controller('form') : null;
+
+      return form ? form.$submitted : false;
+    },
+
+    /**
+     * Animate the requested element's scrollTop to the requested scrollPosition with basic easing.
+     *
+     * @param element The element to scroll.
+     * @param scrollEnd The new/final scroll position.
+     */
+    animateScrollTo: function(element, scrollEnd) {
+      var scrollStart = element.scrollTop;
+      var scrollChange = scrollEnd - scrollStart;
+      var scrollingDown = scrollStart < scrollEnd;
+      var startTime = $mdUtil.now();
+
+      $$rAF(scrollChunk);
+
+      function scrollChunk() {
+        var newPosition = calculateNewPosition();
+
+        element.scrollTop = newPosition;
+
+        if (scrollingDown ? newPosition < scrollEnd : newPosition > scrollEnd) {
+          $$rAF(scrollChunk);
+        }
+      }
+
+      function calculateNewPosition() {
+        var duration = 1000;
+        var currentTime = $mdUtil.now() - startTime;
+
+        return ease(currentTime, scrollStart, scrollChange, duration);
+      }
+
+      function ease(currentTime, start, change, duration) {
+        // If the duration has passed (which can occur if our app loses focus due to $$rAF), jump
+        // straight to the proper position
+        if (currentTime > duration) {
+          return start + change;
+        }
+
+        var ts = (currentTime /= duration) * currentTime;
+        var tc = ts * currentTime;
+
+        return start + change * (-2 * tc + 3 * ts);
+      }
+    }
   };
 
 
@@ -710,4 +846,3 @@ angular.element.prototype.blur = angular.element.prototype.blur || function() {
     }
     return this;
   };
-

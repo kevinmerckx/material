@@ -5,7 +5,7 @@ angular.module('material.core')
  * Factory function that creates the grab-bag $mdConstant service.
  * @ngInject
  */
-function MdConstantFactory($sniffer) {
+function MdConstantFactory($sniffer, $window, $document) {
 
   var vendorPrefix = $sniffer.vendorPrefix;
   var isWebkit = /webkit/i.test(vendorPrefix);
@@ -33,7 +33,14 @@ function MdConstantFactory($sniffer) {
     });
   }
 
-  return {
+  var self = {
+    isInputKey : function(e) { return (e.keyCode >= 31 && e.keyCode <= 90); },
+    isNumPadKey : function (e){ return (3 === e.location && e.keyCode >= 97 && e.keyCode <= 105); },
+    isNavigationKey : function(e) {
+      var kc = self.KEY_CODE, NAVIGATION_KEYS =  [kc.SPACE, kc.ENTER, kc.UP_ARROW, kc.DOWN_ARROW];
+      return (NAVIGATION_KEYS.indexOf(e.keyCode) != -1);    
+    },
+
     KEY_CODE: {
       COMMA: 188,
       SEMICOLON : 186,
@@ -105,4 +112,6 @@ function MdConstantFactory($sniffer) {
       'print'
     ]
   };
+
+  return self;
 }

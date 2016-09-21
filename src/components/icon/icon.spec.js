@@ -26,8 +26,10 @@ describe('MdIcon directive', function() {
         el = make( '<md-icon md-font-icon="android"></md-icon>');
 
         expect(el.html()).toEqual('');
-        expect( clean(el.attr('class')) ).toEqual("md-font android material-icons");
-
+        var classes = clean(el.attr('class'));
+        expect(classes).toContain('md-font');
+        expect(classes).toContain('android');
+        expect(classes).toContain('material-icons');
       });
 
       it('should transclude class specifiers', function() {
@@ -47,7 +49,7 @@ describe('MdIcon directive', function() {
       it('should apply default fontset "material-icons" when not specified.',function() {
         $scope.font = {
           name: 'icon-home',
-          color: "#777",
+          color: '#777',
           size: 48
         };
 
@@ -66,6 +68,21 @@ describe('MdIcon directive', function() {
         expect(el.attr('role')).toBe('img');
       });
 
+      it('should remove old icon class and apply the new when icon changed.',function() {
+        $scope.font = 'icon-home';
+
+        el = make('<md-icon md-font-icon="{{ font }}" ></md-icon>');
+
+        expect(el.attr('md-font-icon')).toBe($scope.font);
+        expect(el.hasClass('icon-home')).toBeTruthy();
+
+        $scope.font = 'android';
+        $scope.$apply();
+
+        expect(el.hasClass('icon-home')).toBeFalsy();
+        expect(el.attr('md-font-icon')).toBe($scope.font);
+        expect(el.hasClass('android')).toBeTruthy();
+      });
     });
 
     describe('using font-icons with ligatures: md-font-set=""', function() {
@@ -84,24 +101,38 @@ describe('MdIcon directive', function() {
         el = make( '<md-icon md-font-set="fa">email</md-icon>');
 
         expect(el.text()).toEqual('email');
-        expect( clean(el.attr('class')) ).toEqual("fontawesome");
+        expect( clean(el.attr('class')) ).toEqual('fontawesome');
       });
 
+      it('should remove old font set class and apply the new when set changed', function() {
+        $scope.set = 'fontawesome';
+
+        el = make( '<md-icon md-font-set="{{ set }}">email</md-icon>');
+
+        expect(el.text()).toEqual('email');
+        expect( clean(el.attr('class')) ).toEqual('fontawesome');
+
+        $scope.set = 'material-icons';
+        $scope.$apply();
+
+        expect( clean(el.attr('class')) ).toEqual('material-icons');
+      });
 
       it('should render correctly using a md-font-set alias', function() {
         el = make( '<md-icon md-font-set="fa" md-font-icon="fa-info"></md-icon>');
 
-        expect( clean(el.attr('class')) ).toEqual("md-font fa-info fa");
+        var classes = clean(el.attr('class'));
+        expect(classes).toContain('md-font');
+        expect(classes).toContain('fa-info');
+        expect(classes).toContain('fa');
       });
-
-
 
       it('should render correctly using md-font-set value as class', function() {
 
         el = make( '<md-icon md-font-set="fontawesome">email</md-icon>');
 
         expect(el.text()).toEqual('email');
-        expect( clean(el.attr('class')) ).toEqual("fontawesome");
+        expect( clean(el.attr('class')) ).toEqual('fontawesome');
       });
     });
 
@@ -127,11 +158,11 @@ describe('MdIcon directive', function() {
         $mdIconProvider.defaultFontSet('');
 
         el = make( '<md-icon class="custom-cake"></md-icon>');
-        expect( clean(el.attr('class')) ).toEqual("custom-cake");
+        expect( clean(el.attr('class')) ).toEqual('custom-cake');
 
         el = make( '<md-icon class="custom-cake">apple</md-icon>');
         expect(el.text()).toEqual('apple');
-        expect( clean(el.attr('class')) ).toEqual("custom-cake");
+        expect( clean(el.attr('class')) ).toEqual('custom-cake');
 
       });
 
@@ -139,11 +170,15 @@ describe('MdIcon directive', function() {
         $mdIconProvider.defaultFontSet('fa');
 
         el = make( '<md-icon></md-icon>');
-        expect( clean(el.attr('class')) ).toEqual("fa");
+        expect( clean(el.attr('class')) ).toEqual('fa');
 
         el = make( '<md-icon md-font-icon="fa-apple">apple</md-icon>');
         expect(el.text()).toEqual('apple');
-        expect( clean(el.attr('class')) ).toEqual("md-font fa-apple fa");
+
+        var classes = clean(el.attr('class'));
+        expect(classes).toContain('md-font');
+        expect(classes).toContain('fa-apple');
+        expect(classes).toContain('fa');
 
       });
 
@@ -160,8 +195,6 @@ describe('MdIcon directive', function() {
 
       });
     });
-
-
   });
 
   describe('for SVGs: ', function () {
@@ -171,12 +204,6 @@ describe('MdIcon directive', function() {
 
       module(function($provide) {
         var $mdIconMock = function(id) {
-
-          wasLastSvgSrcTrusted = false;
-          if (!angular.isString(id)) {
-            id = $sce.getTrustedUrl(id);
-            wasLastSvgSrcTrusted = true;
-          }
 
           return {
             then: function(fn) {
@@ -188,8 +215,6 @@ describe('MdIcon directive', function() {
                 case 'android.svg'      : fn('<svg><g id="android"></g></svg>');
                   break;
                 case 'cake.svg'         : fn('<svg><g id="cake"></g></svg>');
-                  break;
-                case 'galactica.svg'         : fn('<svg><g id="galactica"></g></svg>');
                   break;
                 case 'image:android'    : fn('');
                   break;
@@ -231,8 +256,6 @@ describe('MdIcon directive', function() {
         el = make('<md-icon md-svg-icon="image:android"></md-icon>');
         expect(el.html()).toEqual('');
       });
-
-
     });
 
     describe('using md-svg-src=""', function() {
@@ -241,17 +264,10 @@ describe('MdIcon directive', function() {
         $sce = _$sce_;
       }));
 
-      it('should mark as trusted static URLs', function() {
-        el = make('<md-icon md-svg-src="galactica.svg"></md-icon>');
-        expect(wasLastSvgSrcTrusted).toBe(true);
-        expect(el[0].innerHTML).toContain('galactica')
-      });
-
       it('should update mdSvgSrc when attribute value changes', function() {
         $scope.url = 'android.svg';
         el = make('<md-icon md-svg-src="{{ url }}"></md-icon>');
         expect(el.attr('md-svg-src')).toEqual('android.svg');
-        expect(wasLastSvgSrcTrusted).toBe(false);
         $scope.url = 'cake.svg';
         $scope.$digest();
         expect(el.attr('md-svg-src')).toEqual('cake.svg');
@@ -266,13 +282,19 @@ describe('MdIcon directive', function() {
 
       describe('with a data URL', function() {
         it('should set mdSvgSrc from a function expression', inject(function() {
-          var svgData = '<svg><g><circle r="50" cx="100" cy="100"></circle></g></svg>';
+          var svgData = '<svg><g><circle cx="100" cy="100" r="50"></circle></g></svg>';
           $scope.getData = function() {
             return 'data:image/svg+xml;base64,' + window.btoa(svgData);
           };
-          el = make('<md-icon md-svg-src="{{ getData() }}"></md-icon>');
+          el = make('<md-icon md-svg-src="{{ getData() }}"></md-icon>')[0];
           $scope.$digest();
-          expect(el[0].innerHTML).toEqual(svgData);
+
+          // Notice that we only compare the tag names here.
+          // Checking the innerHTML to be the same as the svgData variable is not working, because
+          // some browsers (like IE) are swapping some attributes, adding an SVG namespace etc.
+          expect(el.firstElementChild.tagName).toBe('svg');
+          expect(el.firstElementChild.firstElementChild.tagName).toBe('g');
+          expect(el.firstElementChild.firstElementChild.firstElementChild.tagName).toBe('circle');
         }));
       });
     });
@@ -317,7 +339,6 @@ describe('MdIcon directive', function() {
         el = make('<md-icon md-svg-icon="android"></md-icon>');
         expect(el.attr('aria-label')).toEqual('android');
       });
-
     });
   });
 
@@ -441,7 +462,6 @@ describe('MdIcon service', function() {
 
         $scope.$digest();
       });
-
     });
 
     describe('$mdIcon() is passed a URL', function() {
@@ -526,7 +546,6 @@ describe('MdIcon service', function() {
 
         $scope.$digest();
       });
-
     });
 
     describe('icon in a group is not found', function() {

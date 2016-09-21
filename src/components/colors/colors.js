@@ -6,7 +6,7 @@
    *  or one that should be observed and dynamically interpolated.
    */
   var STATIC_COLOR_EXPRESSION = /^{((\s|,)*?["'a-zA-Z-]+?\s*?:\s*?('|")[a-zA-Z0-9-.]*('|"))+\s*}$/;
-  var colorPalettes = undefined;
+  var colorPalettes = null;
 
   /**
    * @ngdoc module
@@ -79,8 +79,10 @@
      */
     function applyThemeColors(element, colorExpression) {
       try {
-        // Assign the calculate RGBA color values directly as inline CSS
-        element.css(interpolateColors(colorExpression));
+        if (colorExpression) {
+          // Assign the calculate RGBA color values directly as inline CSS
+          element.css(interpolateColors(colorExpression));
+        }
       } catch (e) {
         $log.error(e.message);
       }
@@ -124,7 +126,7 @@
 
       rgbValues = contrast ? rgbValues.contrast : rgbValues.value;
 
-      return $mdUtil.supplant('rgba( {0}, {1}, {2}, {3} )',
+      return $mdUtil.supplant('rgba({0}, {1}, {2}, {3})',
         [rgbValues[0], rgbValues[1], rgbValues[2], rgbValues[3] || color.opacity]
       );
     }
@@ -148,7 +150,7 @@
 
         rgbColors[key] = parseColor(color);
         if (hasBackground && !hasColorProperty) {
-          rgbColors['color'] = parseColor(color, true);
+          rgbColors.color = parseColor(color, true);
         }
       });
 
@@ -253,7 +255,7 @@
    * @usage
    * <hljs lang="html">
    *   <div md-colors="{background: 'myTheme-accent-900-0.43'}">
-   *     <div md-colors="{color: 'red-A100', border-color: 'primary-600'}">
+   *     <div md-colors="{color: 'red-A100', 'border-color': 'primary-600'}">
    *       <span>Color demo</span>
    *     </div>
    *   </div>
@@ -278,7 +280,17 @@
         return function (scope, element, attrs, ctrl) {
           var mdThemeController = ctrl[0];
 
+          var lastColors = {};
+
           var parseColors = function (theme) {
+            if (typeof theme !== 'string') {
+              theme = '';
+            }
+
+            if (!attrs.mdColors) {
+              attrs.mdColors = '{}';
+            }
+
             /**
              * Json.parse() does not work because the keys are not quoted;
              * use $parse to convert to a hash map
@@ -310,7 +322,25 @@
               });
             }
 
+            cleanElement(colors);
+
             return colors;
+          };
+
+          var cleanElement = function (colors) {
+            if (!angular.equals(colors, lastColors)) {
+              var keys = Object.keys(lastColors);
+
+              if (lastColors.background && !keys.color) {
+                keys.push('color');
+              }
+
+              keys.forEach(function (key) {
+                element.css(key, '');
+              });
+            }
+
+            lastColors = colors;
           };
 
           /**
@@ -324,7 +354,7 @@
             });
           }
 
-          scope.$on('destroy', function () {
+          scope.$on('$destroy', function () {
             unregisterChanges();
           });
 

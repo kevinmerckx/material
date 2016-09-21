@@ -342,6 +342,80 @@ describe('$$interimElement service', function() {
 
       }));
 
+      it('should show multiple interim elements', function() {
+        var showCount = 0;
+
+        showInterim();
+        expect(showCount).toBe(1);
+
+        showInterim();
+        expect(showCount).toBe(2);
+
+        function showInterim() {
+          Service.show({
+            template: '<div>First Interim</div>',
+            onShow: function() {
+              showCount++;
+            },
+            onRemove: function() {
+              showCount--;
+            },
+            multiple: true
+          });
+        }
+      });
+
+
+      it('should not show multiple interim elements by default', function() {
+        var showCount = 0;
+
+        showInterim();
+        expect(showCount).toBe(1);
+
+        showInterim();
+        expect(showCount).toBe(1);
+
+        function showInterim() {
+          Service.show({
+            template: '<div>First Interim</div>',
+            onShow: function() {
+              showCount++;
+            },
+            onRemove: function() {
+              showCount--;
+            }
+          });
+        }
+      });
+
+      it('should cancel a previous interim after a second shows up', inject(function($q, $timeout) {
+        var hidePromise = $q.defer();
+        var isShown = false;
+
+        Service.show({
+          template: '<div>First Interim</div>',
+          onRemove: function() {
+            return hidePromise.promise;
+          }
+        });
+
+        // Once we show the second interim, the first interim should be cancelled and new interim
+        // will successfully show up after the first interim hides completely.
+        Service.show({
+          template: '<div>Second Interim</div>',
+          onShow: function() {
+            isShown = true;
+          }
+        });
+
+        expect(isShown).toBe(false);
+
+        hidePromise.resolve();
+        $timeout.flush();
+
+        expect(isShown).toBe(true);
+      }));
+
       it('should cancel a previous shown interim element', inject(function() {
         var isCancelled = false;
 
@@ -385,6 +459,25 @@ describe('$$interimElement service', function() {
         flush();
         $timeout.flush();
         expect(autoClosed).toBe(true);
+      }));
+
+      it('calls onCompiling before onShowing', inject(function() {
+        var onCompilingCalled = false;
+
+        Service.show({
+          template: '<div>My Element</div>',
+          onCompiling: beforeCompile,
+          onShowing: beforeShow
+        });
+
+        function beforeCompile() {
+          onCompilingCalled = true;
+        }
+
+        function beforeShow() {
+          expect(onCompilingCalled).toBe(true);
+        }
+
       }));
 
       it('calls onShowing before onShow', inject(function() {
